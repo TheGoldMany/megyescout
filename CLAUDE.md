@@ -42,6 +42,7 @@ python cli.py scrape --season 2025/2026 --only bk1 --profiles   # closed seasons
 python cli.py resolve --season 2025/2026   # which MLSZ league each target maps to (add --live for current)
 python cli.py discover --federation 1      # raw league dropdown of a federation
 python cli.py geo                          # locate clubs without coordinates; --set "NAME" --town X
+python cli.py profiles [--limit 200]       # fetch missing/stale player profiles only (birth year, career)
 cd web && npm install && npm run dev   # needs DATABASE_URL (see web/.env.example)
 npx tsc --noEmit && npm run lint && npm run build
 npm run test:e2e                       # Playwright; DB must be seeded with demo data

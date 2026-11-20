@@ -128,24 +128,37 @@ async def scrape_competition(client: MlszClient, rt: ResolvedTarget, mode: str,
         await refresh_profiles(client, stats.players)
 
 
-async def refresh_profiles(client: MlszClient, mlsz_ids: set[str], stale_days: int = 30) -> int:
-    """Fetch /player/<id>.html for players never scraped or stale."""
+async def refresh_profiles(client: MlszClient, mlsz_ids: set[str] | None = None, stale_days: int = 30,
+                           limit: int | None = None) -> int:
+    """Fetch /player/<id>.html (birth date, full career) for players never scraped or stale.
+
+    mlsz_ids=None means every real MLSZ player in the database (demo rows are skipped).
+    Returns the number of profiles loaded successfully.
+    """
     from sqlalchemy import text
 
     with db.engine().connect() as conn:
         rows = conn.execute(text("""
             SELECT mlsz_player_id FROM players
-            WHERE mlsz_player_id = ANY(:ids)
+            WHERE (CAST(:ids AS text[]) IS NULL OR mlsz_player_id = ANY(CAST(:ids AS text[])))
+              AND mlsz_player_id ~ '^[0-9]+$'
               AND (profile_scraped_at IS NULL OR profile_scraped_at < now() - make_interval(days => :d))
-        """), {"ids": list(mlsz_ids), "d": stale_days}).scalars().all()
-    for mid in rows:
+            ORDER BY profile_scraped_at NULLS FIRST
+            LIMIT :lim
+        """), {"ids": list(mlsz_ids) if mlsz_ids is not None else None, "d": stale_days,
+               "lim": limit}).scalars().all()
+    loaded = 0
+    for i, mid in enumerate(rows, start=1):
         try:
             profile = parse_player_profile(await client.get(f"/player/{mid}.html"), mid)
             with db.engine().begin() as conn:
                 db.load_player_profile(conn, profile)
+            loaded += 1
         except Exception:
             log.exception("profile %s failed", mid)
-    return len(rows)
+        if i % 50 == 0:
+            log.info("profiles: %d/%d", i, len(rows))
+    return loaded
 
 
 async def run(mode: str, only: list[str] | None, season: str, with_profiles: bool) -> ScrapeStats:

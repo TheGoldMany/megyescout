@@ -35,7 +35,7 @@ export default async function DataHealthPage() {
   const tiles = [
     { label: "Játékosok az adatbázisban", value: fmtInt(quality.players), warn: false },
     { label: "Születési év nélkül", value: fmtInt(quality.no_birth_year), warn: quality.no_birth_year > 0, hint: "Életkor és fiatalszabály-szűrő nem működik rájuk" },
-    { label: "MLSZ adatlap még nincs letöltve", value: fmtInt(quality.no_profile), warn: quality.no_profile > 0, hint: "scrape --profiles pótolja" },
+    { label: "MLSZ adatlap még nincs letöltve", value: fmtInt(quality.no_profile), warn: quality.no_profile > 0, hint: "Pótlás: python cli.py profiles" },
     { label: "Helymeghatározás nélküli klubok", value: fmtInt(unlocated.length), warn: unlocated.length > 0, hint: `${unlocatedPlayers} játékos kiesik a távolságszűrőből` },
   ];
 

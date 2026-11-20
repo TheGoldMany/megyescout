@@ -5,6 +5,7 @@
     python cli.py scrape --mode incremental     # live MLSZ scrape (+ analytics)
     python cli.py analytics                     # recompute metrics only
     python cli.py discover --federation 1       # list league ids of a federation (season ids change yearly!)
+    python cli.py profiles [--limit 200]        # backfill player profile pages without re-scraping matches
     python cli.py schedule                      # long-running worker: Mon 06:00 + Wed 21:00 (Europe/Budapest)
 """
 from __future__ import annotations
@@ -59,6 +60,12 @@ async def _discover(federation: int, season: str) -> None:
         html = await client.get(f"/league/{SEASON_IDS[season]}/{federation}/0/1.html")
     for league_id, name in parse_league_options(html):
         print(f"{league_id}\t{name}")
+
+
+async def _profiles(stale_days: int, limit: int | None) -> int:
+    from scraper import MlszClient, refresh_profiles
+    async with MlszClient() as client:
+        return await refresh_profiles(client, None, stale_days, limit)
 
 
 def cmd_geo(args) -> None:
@@ -137,6 +144,9 @@ def main() -> None:
     d = sub.add_parser("discover")
     d.add_argument("--federation", type=int, required=True)
     d.add_argument("--season", default=CURRENT_SEASON, choices=sorted(SEASON_IDS))
+    pr = sub.add_parser("profiles", help="fetch missing/stale MLSZ player profiles (birth date, career) only")
+    pr.add_argument("--stale-days", type=int, default=30)
+    pr.add_argument("--limit", type=int, help="cap the number of profiles fetched in this run")
     g = sub.add_parser("geo", help="fill missing club coordinates from the gazetteer, or set one by hand")
     g.add_argument("--set", metavar="CLUB", help="exact club name (as shown on the Adatállapot page)")
     g.add_argument("--town", help="gazetteer town for --set, e.g. Csólyospálos")
@@ -166,6 +176,9 @@ def main() -> None:
         asyncio.run(_resolve(args.season, args.live))
     elif args.cmd == "discover":
         asyncio.run(_discover(args.federation, args.season))
+    elif args.cmd == "profiles":
+        print("loaded:", asyncio.run(_profiles(args.stale_days, args.limit)), "profiles")
+        print(analytics.run())
     elif args.cmd == "geo":
         cmd_geo(args)
     elif args.cmd == "schedule":
