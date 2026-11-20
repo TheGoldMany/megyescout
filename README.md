@@ -7,7 +7,10 @@ BLSZ I–II, Magyar Kupa), built on the public match reports on adatbank.mlsz.hu
   and distance from Lajosmizse (Haversine), plus a sortable table (cards on mobile)
 - **Player profile** (`/players/[id]`): Scouting Index ring, 6-axis radar against the league positional average,
   multi-league career timeline (senior, youth, futsal), recent matches, similar players, private club-vault box
-- **Signing board** (`/shortlist`): grouped by status or position, quick note editing, comparing up to 4 players
+- **Signing board** (`/shortlist`): a "Friss forma" panel showing each target's last match (minutes, goals,
+  "did not play"), grouping by status or position, quick note editing, comparing up to 4 players, CSV export
+- **Data health** (`/data`): sync log, per-competition coverage, clubs without a location, missing birth years
+- **Seasons**: switch seasons in the explorer and on profiles; past seasons resolve their MLSZ league ids automatically
 - **ETL**: polite MLSZ scraper (incremental and backfill), metrics engine, demo seed
 
 ## Quick start (local Postgres 16)
@@ -31,5 +34,12 @@ The `etl` service scrapes on Mondays at 06:00 and Wednesdays at 21:00 (Europe/Bu
 Run the `db/migrations` against Supabase, deploy `web/` to Vercel with `DATABASE_URL` (the `hunscout_web` role
 or an equivalent non-superuser role, `PG_SSL=true`), `WORKSPACE_PASSCODE` and `AUTH_SECRET`. Run the ETL worker
 on your own server or in Docker; it does not fit serverless timeouts.
+
+## Tests
+```bash
+cd etl && python -m pytest                       # parsers (saved real MLSZ pages), resolver, analytics
+cd web && npm run test:e2e                       # Playwright, needs a demo-seeded DB
+```
+CI (`.github/workflows/ci.yml`) runs both, plus typecheck, lint and build, against a freshly migrated database.
 
 See `CLAUDE.md` for architecture and conventions.
