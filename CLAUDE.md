@@ -77,9 +77,9 @@ cd etl && uvicorn api:app --port 8000  # etl service locally (or `vercel dev` fr
 - **Private workspace:** `scout_notes` has FORCE RLS on `current_workspace_id()` (`app.workspace_id` GUC or
   Supabase JWT claim `workspace_id`). The web app must connect as `hunscout_web` (superusers bypass RLS) and run
   note queries through `withWorkspace()`.
-- Auth (pilot): signed cookie + shared `WORKSPACE_PASSCODE`. Open dev mode (no login) exists **only locally**:
-  on Vercel (`VERCEL=1`) login is always required and fails closed — without `WORKSPACE_PASSCODE` and an
-  `AUTH_SECRET` of ≥16 chars nobody can log in and /login lists what is missing (never the public dev key).
+- Auth (pilot): **no login for now** (client decision): without `WORKSPACE_PASSCODE` the app, club notes
+  included, is open on Vercel too. Setting `WORKSPACE_PASSCODE` + `AUTH_SECRET` (≥16 chars) enables the signed-cookie
+  staff login; with a passcode but no valid AUTH_SECRET nobody can log in (never the public dev key).
 - After any data change run `analytics.run()` — it refreshes `mv_player_explorer`, which the UI reads.
   The view has one row per (player, season); use `is_latest` for "current" joins and filter explorer
   queries by season (default = newest).

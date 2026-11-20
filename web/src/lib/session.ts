@@ -33,8 +33,7 @@ function secret(): string | null {
 /** Missing settings that block logging in on this deployment (shown on the login page). */
 export function authConfigProblems(): string[] {
   const problems: string[] = [];
-  if (onVercel() && !process.env.WORKSPACE_PASSCODE) problems.push("WORKSPACE_PASSCODE");
-  if (secret() === null) problems.push("AUTH_SECRET (legalább 16 karakter)");
+  if (process.env.WORKSPACE_PASSCODE && secret() === null) problems.push("AUTH_SECRET (legalább 16 karakter)");
   return problems;
 }
 
@@ -74,18 +73,19 @@ export function passcodeMatches(candidate: string): boolean {
 }
 
 /**
- * Login required? Always on Vercel (the private club notes must never be public, even if
- * WORKSPACE_PASSCODE was forgotten); locally only when a passcode is set ("open dev mode" otherwise).
+ * Login required only when WORKSPACE_PASSCODE is set. Decided with the client: no login for now,
+ * so without a passcode the app (including the club notes) is open — locally and on Vercel.
+ * Setting WORKSPACE_PASSCODE + AUTH_SECRET (≥16 chars) turns the staff login on.
  */
 export function authEnabled() {
-  return onVercel() || Boolean(process.env.WORKSPACE_PASSCODE);
+  return Boolean(process.env.WORKSPACE_PASSCODE);
 }
 
 export async function getSession(): Promise<Session | null> {
   const store = await cookies();
   const s = verify(store.get(SESSION_COOKIE)?.value);
   if (s) return s;
-  if (!authEnabled()) return { workspaceId: DEFAULT_WORKSPACE, name: "Stáb (dev)" };
+  if (!authEnabled()) return { workspaceId: DEFAULT_WORKSPACE, name: "Stáb" };
   return null;
 }
 

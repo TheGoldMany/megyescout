@@ -48,7 +48,7 @@ Environment variables (Vercel env vars are shared by all services, hence the sep
 | `ETL_DATABASE_URL` | etl | schema-owner role (writes); a Supabase pooler URL works (prepared statements off) |
 | `CRON_SECRET` | web | random string; Vercel sends it as `Authorization: Bearer …` to schedule runs |
 | `ETL_INTERNAL_TOKEN` | web + etl | optional shared secret checked by `etl` on top of the private binding |
-| `WORKSPACE_PASSCODE`, `AUTH_SECRET` | web | staff login; **required on Vercel** (AUTH_SECRET ≥ 16 chars). Without them nobody can log in and /login says what is missing |
+| `WORKSPACE_PASSCODE`, `AUTH_SECRET` | web | optional staff login (currently off: no passcode = open app). If you set the passcode, AUTH_SECRET (≥ 16 chars) is required |
 | `ETL_URL` | web | **injected by the binding — do not set it** |
 
 **Migrations** run automatically: `.github/workflows/migrate.yml` applies new `db/migrations/*.sql` files
