@@ -21,7 +21,7 @@
         "api.py": {
           "maxDuration": "max",
           "maxConcurrency": 1,
-          "excludeFiles": "{tests/**,.pytest_cache/**,Dockerfile,requirements-dev.txt}"
+          "excludeFiles": "{tests/**,.pytest_cache/**,requirements-dev.txt}"
         }
       }
     }

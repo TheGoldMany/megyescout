@@ -22,14 +22,6 @@ python cli.py seed --reset          # or: python cli.py scrape --mode backfill -
 cd ../web && cp .env.example .env.local && npm install && npm run dev
 ```
 
-## Docker
-```bash
-docker compose up -d db
-docker compose run --rm etl python cli.py seed
-docker compose up -d etl web        # http://localhost:3000
-```
-The `etl` service scrapes on Mondays at 06:00 and Wednesdays at 21:00 (Europe/Budapest).
-
 ## Vercel (one project, two services)
 `vercel.json` deploys the repo as a single Vercel project with [services](https://vercel.com/docs/services):
 
@@ -59,13 +51,17 @@ Environment variables (Vercel env vars are shared by all services, hence the sep
 | `WORKSPACE_PASSCODE`, `AUTH_SECRET` | web | staff login |
 | `ETL_URL` | web | **injected by the binding — do not set it** |
 
-Migrations are not run by the deployment: apply them with `python etl/cli.py migrate` (with `ETL_DATABASE_URL`)
-before deploying a schema change. Locally, `vercel dev` runs both services and injects `ETL_URL`; without it,
+**Migrations** run automatically: `.github/workflows/migrate.yml` applies new `db/migrations/*.sql` files
+after CI passes on the default branch (the one Vercel deploys to production), using the repository secret
+`ETL_DATABASE_URL`. Without the secret the job is skipped with a notice. Vercel deploys in parallel, so for a
+breaking schema change run the workflow manually ("Run workflow") before merging. Migration 003 creates the
+`hunscout_web` role with the password `hunscout_web`: change it right after the first run
+(`ALTER ROLE hunscout_web PASSWORD '…'`) and use the new one in `DATABASE_URL`.
+
+Locally, `vercel dev` runs both services and injects `ETL_URL`; without it,
 run `cd etl && uvicorn api:app --port 8000` and set `ETL_URL=http://localhost:8000` for the web app.
 Manual sync: `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://<domain>/api/cron/sync/bk1`
 (or `/api/cron/sync?only=bk1,pest1`, which processes leagues until the 300 s limit and reports the rest as `skipped`).
-
-The Docker setup (`docker-compose.yml`, long-running `cli.py schedule` worker) still works for self-hosting.
 
 ## Tests
 ```bash

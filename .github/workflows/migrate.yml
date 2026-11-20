@@ -1,0 +1,52 @@
+name: Migrate production database
+
+# Applies pending db/migrations/*.sql to the production database after CI passed on the default
+# branch (the branch Vercel deploys to production). Kept out of ci.yml so a newer push cannot
+# cancel a migration halfway (ci.yml uses cancel-in-progress). Migrations are idempotent and
+# tracked in schema_migrations; each run applies only the new files, in one transaction.
+#
+# Requires the repository secret ETL_DATABASE_URL (schema-owner role, e.g. the Supabase
+# session/direct connection string). Without it the job is skipped with a notice.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch: # manual run, e.g. before deploying a breaking schema change
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migrate-production
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    # Only trusted code: a successful CI run for a push to the default branch, or a manual run on it.
+    # Never pull requests or feature branches (workflow_run jobs can read secrets).
+    if: >-
+      (github.event_name == 'workflow_dispatch' &&
+       github.ref_name == github.event.repository.default_branch) ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == github.event.repository.default_branch)
+    defaults: { run: { working-directory: etl } }
+    env:
+      ETL_DATABASE_URL: ${{ secrets.ETL_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: etl/requirements*.txt }
+      - name: Apply pending migrations
+        run: |
+          if [ -z "$ETL_DATABASE_URL" ]; then
+            echo "::notice::ETL_DATABASE_URL secret is not set; skipping production migrations."
+            exit 0
+          fi
+          pip install -r requirements.txt
+          python cli.py migrate

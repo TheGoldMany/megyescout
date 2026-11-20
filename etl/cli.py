@@ -6,51 +6,21 @@
     python cli.py analytics                     # recompute metrics only
     python cli.py discover --federation 1       # list league ids of a federation (season ids change yearly!)
     python cli.py profiles [--limit 200]        # backfill player profile pages without re-scraping matches
-    python cli.py schedule                      # long-running worker: Mon 06:00 + Wed 21:00 (Europe/Budapest)
+
+Scheduled syncs run on Vercel (vercel.json `schedules` -> web /api/cron/sync/<key> -> etl service);
+this CLI is for local work: migrations, seeding, backfills and one-off fixes.
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
 import logging
-import time
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
 import analytics
 import db
 from config import CURRENT_SEASON, SEASON_IDS
 
 log = logging.getLogger("hunscout.cli")
-TZ = ZoneInfo("Europe/Budapest")
-# (weekday, hour, minute, mode) — Monday morning after the weekend round, Wednesday evening for
-# late disciplinary updates and midweek cup games.
-SCHEDULE = [(0, 6, 0, "incremental"), (2, 21, 0, "incremental")]
-
-
-def next_run(now: datetime) -> tuple[datetime, str]:
-    candidates = []
-    for wd, hh, mm, mode in SCHEDULE:
-        days = (wd - now.weekday()) % 7
-        at = (now + timedelta(days=days)).replace(hour=hh, minute=mm, second=0, microsecond=0)
-        if at <= now:
-            at += timedelta(days=7)
-        candidates.append((at, mode))
-    return min(candidates)
-
-
-def cmd_schedule(profiles: bool) -> None:
-    import scraper
-    while True:
-        at, mode = next_run(datetime.now(TZ))
-        log.info("next scrape (%s) at %s", mode, at.isoformat())
-        while datetime.now(TZ) < at:
-            time.sleep(min(300, max(1, (at - datetime.now(TZ)).total_seconds())))
-        try:
-            asyncio.run(scraper.run(mode, None, CURRENT_SEASON, profiles))
-            analytics.run()
-        except Exception:
-            log.exception("scheduled run failed; will retry at the next slot")
 
 
 async def _discover(federation: int, season: str) -> None:
@@ -152,8 +122,6 @@ def main() -> None:
     g.add_argument("--town", help="gazetteer town for --set, e.g. Csólyospálos")
     g.add_argument("--lat", type=float)
     g.add_argument("--lng", type=float)
-    sch = sub.add_parser("schedule")
-    sch.add_argument("--profiles", action="store_true")
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -181,9 +149,6 @@ def main() -> None:
         print(analytics.run())
     elif args.cmd == "geo":
         cmd_geo(args)
-    elif args.cmd == "schedule":
-        db.run_migrations()
-        cmd_schedule(args.profiles)
 
 
 if __name__ == "__main__":

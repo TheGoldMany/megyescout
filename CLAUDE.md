@@ -20,7 +20,7 @@ etl/                  Python 3.12 worker (flat modules, run from inside etl/)
   analytics.py        metrics, position inference, radar, Scouting Index, archetypes, cosine similarity
   seed_demo.py        realistic demo data for the region (ids prefixed "demo-")
   geo.py              club-name -> town gazetteer + haversine
-  cli.py              migrate | seed | scrape | analytics | resolve | discover | geo | profiles | schedule
+  cli.py              migrate | seed | scrape | analytics | resolve | discover | geo | profiles (local tooling)
   api.py              FastAPI entrypoint of the internal Vercel `etl` service: /health /targets /sync /analytics /profiles
   tests/              pytest, parsers tested against saved real MLSZ pages in tests/fixtures/
 web/                  Next.js 15 App Router, TypeScript, Tailwind v4, shadcn/ui-style components, Recharts
@@ -30,10 +30,10 @@ web/                  Next.js 15 App Router, TypeScript, Tailwind v4, shadcn/ui-
   src/app/api/cron/sync/[target]  target of the 22 Vercel schedules (one league each); CRON_SECRET-protected
   src/app/            / (explorer) · /players/[id] · /shortlist (+ /shortlist/export CSV) · /compare · /data
   e2e/                Playwright specs (need a demo-seeded DB); playwright.config.ts starts `npm run start`
-.github/workflows/    CI: pytest · tsc/lint/build · E2E against a freshly migrated + seeded Postgres
+.github/workflows/    ci.yml: pytest · vercel.json schema · tsc/lint/build · E2E (fresh Postgres + seed)
+                      migrate.yml: after green CI on the default branch, `cli.py migrate` (secret ETL_DATABASE_URL)
 vercel.json           services `web` (public, /(.*)) + `etl` (internal, bound as ETL_URL) + 22 schedules
 scripts/validate_vercel_json.py   schema check for vercel.json (used by CI)
-docker-compose.yml    db + etl worker + web (self-hosting alternative)
 ```
 
 ## Commands
@@ -90,6 +90,10 @@ cd etl && uvicorn api:app --port 8000  # etl service locally (or `vercel dev` fr
   (scraper stops starting requests near the deadline, leftovers are reported as `truncated` /
   `profiles_pending`). Backfills of whole seasons run from the CLI, never through Vercel. When adding a
   V1 target, add its two schedules (tests/test_vercel_config.py fails otherwise).
+- **No Docker / no long-running worker** (decided with the client): Vercel schedules are the only scheduler,
+  so nothing else may scrape on a timer (it would double every sync). Local work uses the CLI.
+- **Migrations** are applied by `.github/workflows/migrate.yml` only after CI passes on the default branch;
+  never from PRs. New schema changes go in a new numbered file; never edit an applied migration.
 - Clubs without coordinates silently drop out of the distance filter: check /data, fix with `cli.py geo`.
 
 ## Design

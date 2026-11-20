@@ -14,7 +14,7 @@ def _normalize_db_url(url: str) -> str:
 
 # On Vercel, environment variables are shared by every service of the project, but the web app must
 # use the least-privilege `hunscout_web` role (RLS) while the ETL writes as the schema owner.
-# So the ETL reads its own ETL_DATABASE_URL first and only falls back to DATABASE_URL (local / Docker).
+# So the ETL reads its own ETL_DATABASE_URL first and only falls back to DATABASE_URL (local dev / CI).
 DATABASE_URL = _normalize_db_url(
     os.getenv("ETL_DATABASE_URL")
     or os.getenv("DATABASE_URL")
