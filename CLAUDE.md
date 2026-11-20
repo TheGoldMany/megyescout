@@ -92,7 +92,8 @@ cd etl && uvicorn api:app --port 8000  # etl service locally (or `vercel dev` fr
   15 min. One schedule per competition, 15 min apart; every etl `/sync` call carries `budget_seconds`
   (scraper stops starting requests near the deadline, leftovers are reported as `truncated` /
   `profiles_pending`). Backfills of whole seasons run from the CLI, never through Vercel. When adding a
-  V1 target, add its two schedules (tests/test_vercel_config.py fails otherwise).
+  V1 target, add its two schedules (tests/test_vercel_config.py fails otherwise). No beta/paid function
+  settings in vercel.json (e.g. `maxConcurrency` needs an opt-in env var and has separate pricing).
 - **No Docker / no long-running worker** (decided with the client): Vercel schedules are the only scheduler,
   so nothing else may scrape on a timer (it would double every sync). Local work uses the CLI.
 - **Migrations** are applied by `.github/workflows/migrate.yml` only after CI passes on the default branch;

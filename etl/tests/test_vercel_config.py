@@ -51,3 +51,10 @@ def test_services_and_binding():
     assert {"type": "service", "service": "etl", "format": "url", "env": "ETL_URL"} in services["web"]["bindings"]
     # etl stays internal: no public rewrite points at it
     assert all(r["destination"]["service"] != "etl" for r in CFG["rewrites"])
+
+
+def test_no_beta_or_paid_function_settings():
+    # `maxConcurrency` is a beta feature with separate pricing (deploy fails without an opt-in env var)
+    for svc in CFG["services"].values():
+        for fn in svc.get("functions", {}).values():
+            assert "maxConcurrency" not in fn
