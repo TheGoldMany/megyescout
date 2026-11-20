@@ -61,6 +61,64 @@ async def _discover(federation: int, season: str) -> None:
         print(f"{league_id}\t{name}")
 
 
+def cmd_geo(args) -> None:
+    """Club coordinates drive the distance filter; clubs without them silently drop out of it."""
+    from sqlalchemy import text
+    from geo import GAZETTEER, geolocate
+
+    with db.engine().begin() as conn:
+        if args.set:
+            if args.town:
+                if args.town not in GAZETTEER:
+                    raise SystemExit(f"unknown town {args.town!r}; use --lat/--lng or add it to geo.GAZETTEER")
+                lat, lng, county = GAZETTEER[args.town]
+                town = args.town
+            elif args.lat is not None and args.lng is not None:
+                lat, lng, county, town = args.lat, args.lng, None, None
+            else:
+                raise SystemExit("--set needs --town or --lat/--lng")
+            n = conn.execute(text("""
+                UPDATE clubs SET city = COALESCE(:town, city), county = COALESCE(:county, county),
+                       latitude = :lat, longitude = :lng, updated_at = now()
+                WHERE name = :name
+            """), dict(town=town, county=county, lat=lat, lng=lng, name=args.set)).rowcount
+            print(f"updated {n} club(s)")
+        else:
+            rows = conn.execute(text("SELECT id, name FROM clubs WHERE latitude IS NULL OR longitude IS NULL")).all()
+            fixed = 0
+            for r in rows:
+                town, lat, lng, county = geolocate(r.name)
+                if town:
+                    conn.execute(text("""
+                        UPDATE clubs SET city = :t, county = :c, latitude = :lat, longitude = :lng, updated_at = now()
+                        WHERE id = :id
+                    """), dict(t=town, c=county, lat=lat, lng=lng, id=r.id))
+                    fixed += 1
+                else:
+                    print(f"unresolved: {r.name}")
+            print(f"located {fixed} of {len(rows)} club(s) without coordinates")
+    analytics.run()  # refresh the explorer view so distances update
+
+
+async def _resolve(season: str, live: bool) -> None:
+    import resolve
+    from parser import parse_league_options
+    from scraper import MlszClient
+    from config import V1_TARGETS
+    async with MlszClient() as client:
+        if live:
+            options = {}
+            for fed in sorted({t.federation_id for t in V1_TARGETS}):
+                options[fed] = parse_league_options(await client.get(f"/league/{SEASON_IDS[season]}/{fed}/0/1.html"))
+            resolved, unresolved = resolve.match_targets(V1_TARGETS, options, season)
+        else:
+            resolved, unresolved = await resolve.resolve_targets(client, season)
+    for r in resolved:
+        print(f"{r.target.key:8} {r.league_id:>6}  {r.short_name:16} {r.name}")
+    for key in unresolved:
+        print(f"{key:8} UNRESOLVED")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="HUN-SCOUT ETL")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -73,9 +131,17 @@ def main() -> None:
     sc.add_argument("--season", default=CURRENT_SEASON, choices=sorted(SEASON_IDS))
     sc.add_argument("--profiles", action="store_true")
     sub.add_parser("analytics")
+    rs = sub.add_parser("resolve", help="show which MLSZ league each V1 target maps to in a season")
+    rs.add_argument("--season", default=CURRENT_SEASON, choices=sorted(SEASON_IDS))
+    rs.add_argument("--live", action="store_true", help="match patterns even for the current season")
     d = sub.add_parser("discover")
     d.add_argument("--federation", type=int, required=True)
     d.add_argument("--season", default=CURRENT_SEASON, choices=sorted(SEASON_IDS))
+    g = sub.add_parser("geo", help="fill missing club coordinates from the gazetteer, or set one by hand")
+    g.add_argument("--set", metavar="CLUB", help="exact club name (as shown on the Adatállapot page)")
+    g.add_argument("--town", help="gazetteer town for --set, e.g. Csólyospálos")
+    g.add_argument("--lat", type=float)
+    g.add_argument("--lng", type=float)
     sch = sub.add_parser("schedule")
     sch.add_argument("--profiles", action="store_true")
     args = ap.parse_args()
@@ -96,8 +162,12 @@ def main() -> None:
         print(analytics.run())
     elif args.cmd == "analytics":
         print(analytics.run())
+    elif args.cmd == "resolve":
+        asyncio.run(_resolve(args.season, args.live))
     elif args.cmd == "discover":
         asyncio.run(_discover(args.federation, args.season))
+    elif args.cmd == "geo":
+        cmd_geo(args)
     elif args.cmd == "schedule":
         db.run_migrations()
         cmd_schedule(args.profiles)

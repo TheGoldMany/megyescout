@@ -54,6 +54,7 @@ def test_geo():
     assert resolve_town("Lajosmizsei VLC") == "Lajosmizse"
     assert resolve_town("Kiskunfélegyházi HTK") == "Kiskunfélegyháza"
     assert resolve_town("KECSKEMÉTI TE II.") == "Kecskemét"
+    assert resolve_town("SC HÍRÖS-ÉP EGYESÜLET") == "Kecskemét"
     assert 15 < haversine_km(47.0264, 19.5542, 46.9062, 19.6913) < 19
 
 

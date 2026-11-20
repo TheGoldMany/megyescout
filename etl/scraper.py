@@ -16,8 +16,8 @@ from dataclasses import dataclass, field
 import httpx
 
 import db
-from config import (CURRENT_SEASON, MLSZ_BASE, REQUEST_DELAY_SEC, SEASON_IDS, USER_AGENT, V1_TARGETS,
-                    CompetitionTarget, comp_key)
+from config import CURRENT_SEASON, MLSZ_BASE, REQUEST_DELAY_SEC, SEASON_IDS, USER_AGENT, comp_key
+from resolve import ResolvedTarget, resolve_targets
 from parser import parse_match_report, parse_player_profile, parse_round_count, parse_round_page, parse_selected_round
 
 log = logging.getLogger("hunscout.scraper")
@@ -79,34 +79,35 @@ class ScrapeStats:
     errors: list[str] = field(default_factory=list)
 
 
-def league_path(season_id: int, t: CompetitionTarget, round_no: int) -> str:
-    return f"/league/{season_id}/{t.federation_id}/{t.league_id}/{round_no}.html"
+def league_path(season_id: int, rt: ResolvedTarget, round_no: int) -> str:
+    return f"/league/{season_id}/{rt.target.federation_id}/{rt.league_id}/{round_no}.html"
 
 
-async def rounds_to_scrape(client: MlszClient, season_id: int, t: CompetitionTarget, mode: str) -> list[int]:
-    html = await client.get(league_path(season_id, t, 1))
+async def rounds_to_scrape(client: MlszClient, season_id: int, rt: ResolvedTarget, mode: str) -> list[int]:
+    html = await client.get(league_path(season_id, rt, 1))
     total = parse_round_count(html)
     if mode == "backfill":
         return list(range(1, total + 1))
     # The site preselects the "current" round when no round is given in the URL.
-    landing = await client.get(f"/league/{season_id}/{t.federation_id}/{t.league_id}/0.html")
+    landing = await client.get(league_path(season_id, rt, 0))
     current = parse_selected_round(landing) or total
     return list(range(max(1, current - INCREMENTAL_LOOKBACK_ROUNDS), current + 1))
 
 
-async def scrape_competition(client: MlszClient, t: CompetitionTarget, mode: str, season: str,
+async def scrape_competition(client: MlszClient, rt: ResolvedTarget, mode: str,
                              with_profiles: bool, stats: ScrapeStats) -> None:
+    t, season = rt.target, rt.season
     season_id = SEASON_IDS[season]
     with db.engine().begin() as conn:
         competition_id = db.upsert_competition(
-            conn, mlsz_comp_id=comp_key(season_id, t.federation_id, t.league_id), season=season, name=t.name,
-            short_name=t.short_name, tier=t.tier, strength_multiplier=t.strength_multiplier,
+            conn, mlsz_comp_id=comp_key(season_id, t.federation_id, rt.league_id), season=season, name=rt.name,
+            short_name=rt.short_name, tier=t.tier, strength_multiplier=t.strength_multiplier,
             category=t.category, federation=t.federation,
         )
-    rounds = await rounds_to_scrape(client, season_id, t, mode)
-    log.info("[%s] rounds %s", t.key, rounds)
+    rounds = await rounds_to_scrape(client, season_id, rt, mode)
+    log.info("[%s %s] league %s rounds %s", t.key, season, rt.league_id, rounds)
     for rnd in rounds:
-        fixtures = parse_round_page(await client.get(league_path(season_id, t, rnd)))
+        fixtures = parse_round_page(await client.get(league_path(season_id, rt, rnd)))
         for fx in fixtures:
             if not fx.has_result:
                 continue
@@ -148,15 +149,21 @@ async def refresh_profiles(client: MlszClient, mlsz_ids: set[str], stale_days: i
 
 
 async def run(mode: str, only: list[str] | None, season: str, with_profiles: bool) -> ScrapeStats:
-    targets = [t for t in V1_TARGETS if not only or t.key in only]
+    if season != CURRENT_SEASON and mode == "incremental":
+        log.info("season %s is closed: switching to backfill", season)
+        mode = "backfill"
     stats = ScrapeStats()
     with db.engine().begin() as conn:
         run_id = db.start_sync(conn, "mlsz", mode)
     error = None
     try:
         async with MlszClient() as client:
-            for t in targets:
-                await scrape_competition(client, t, mode, season, with_profiles, stats)
+            targets, unresolved = await resolve_targets(client, season, only)
+            for key in unresolved:
+                log.warning("no league found for target %s in %s — check its patterns", key, season)
+                stats.errors.append(f"{key}: unresolved in {season}")
+            for rt in targets:
+                await scrape_competition(client, rt, mode, with_profiles, stats)
     except Exception as exc:
         error = str(exc)
         raise

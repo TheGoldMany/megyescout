@@ -196,6 +196,7 @@ ALIASES: dict[str, str] = {
     "kte": "Kecskemét",
     "kecskeméti": "Kecskemét",
     "kecskemeti": "Kecskemét",
+    "hírös": "Kecskemét",  # "Hírös város" = Kecskemét
     "vlc": "Lajosmizse",
     "lajosmizsei": "Lajosmizse",
     "ceglédi": "Cegléd",
