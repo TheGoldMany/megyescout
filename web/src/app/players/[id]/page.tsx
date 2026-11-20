@@ -8,6 +8,7 @@ import {
   getPositionalAverage,
   getRecentMatches,
   getSimilar,
+  getPlayerSeasons,
   type CareerRow,
 } from "@/lib/queries";
 import { getSession } from "@/lib/session";
@@ -47,29 +48,70 @@ function groupBySeason(rows: CareerRow[]) {
   return [...m.entries()];
 }
 
-export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PlayerPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ season?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
   const { id } = await params;
-  const p = await getPlayer(session.workspaceId, id);
+  const { season: requestedSeason } = await searchParams;
+  const seasons = await getPlayerSeasons(id).catch(() => [] as string[]);
+  const season = requestedSeason && seasons.includes(requestedSeason) ? requestedSeason : undefined;
+  const p = await getPlayer(session.workspaceId, id, season);
   if (!p) notFound();
 
-  const [career, similar, note, recent, avg] = await Promise.all([
+  const [career, similarNow, note, recent, avg] = await Promise.all([
     getCareer(id),
-    getSimilar(session.workspaceId, id),
+    getSimilar(session.workspaceId, id, p.season ?? null),
     getNote(session.workspaceId, id),
     getRecentMatches(id),
     getPositionalAverage(p.competition_id, p.primary_position),
   ]);
+  // Early in a season most players are below the 450′ similarity threshold:
+  // fall back to the most recent earlier season that has statistical twins.
+  let similar = similarNow;
+  let similarSeason = p.season ?? null;
+  if (similar.length === 0) {
+    for (const s of seasons.filter((x) => p.season && x < p.season)) {
+      const prev = await getSimilar(session.workspaceId, id, s);
+      if (prev.length) {
+        similar = prev;
+        similarSeason = s;
+        break;
+      }
+    }
+  }
   const seasonStart = p.season ? Number(p.season.slice(0, 4)) : new Date().getFullYear();
   const age = p.birth_year ? seasonStart - p.birth_year : null;
   const isMlsz = /^\d+$/.test(p.mlsz_player_id ?? "");
 
   return (
     <div className="space-y-4">
-      <Link href="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3.5 w-3.5" /> Vissza a keresőhöz
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Link href="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-3.5 w-3.5" /> Vissza a keresőhöz
+        </Link>
+        {seasons.length > 1 && (
+          <nav className="inline-flex rounded-md bg-secondary p-1 text-xs" aria-label="Szezon">
+            {seasons.map((s, i) => (
+              <Link
+                key={s}
+                href={i === 0 ? `/players/${id}` : `/players/${id}?season=${encodeURIComponent(s)}`}
+                className={cn(
+                  "rounded px-2.5 py-1 font-mono text-muted-foreground",
+                  s === p.season && "bg-card text-foreground shadow",
+                )}
+              >
+                {s}
+              </Link>
+            ))}
+          </nav>
+        )}
+      </div>
 
       {/* hero */}
       <Card className="overflow-hidden">
@@ -212,7 +254,14 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
       <Card>
         <CardHeader>
           <CardTitle>Hasonló profilok a régióban</CardTitle>
-          <CardDescription>Koszinusz-hasonlóság a 6 tengelyes szezon-vektor alapján, azonos poszt-csoporton belül</CardDescription>
+          <CardDescription>
+            Koszinusz-hasonlóság a 6 tengelyes szezon-vektor alapján, azonos poszt-csoporton belül
+            {similarSeason && similarSeason !== p.season && (
+              <span className="ml-1 text-amber-300">
+                · a(z) {similarSeason} szezon alapján (az idei játékperc még kevés)
+              </span>
+            )}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {similar.length === 0 ? (
@@ -224,7 +273,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 return (
                   <Link
                     key={s.player_id}
-                    href={`/players/${s.player_id}`}
+                    href={similarSeason && similarSeason !== seasons[0] ? `/players/${s.player_id}?season=${encodeURIComponent(similarSeason)}` : `/players/${s.player_id}`}
                     className="group rounded-lg border bg-background/40 p-3 transition hover:border-primary/40 hover:bg-secondary/40"
                   >
                     <div className="flex items-start justify-between gap-2">

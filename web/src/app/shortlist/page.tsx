@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getShortlist } from "@/lib/queries";
+import { Download } from "lucide-react";
+import { getRecentForm, getShortlist } from "@/lib/queries";
 import { getSession } from "@/lib/session";
 import { POSITION_LABEL, STATUS_LABEL, STATUS_ORDER, type NoteStatus, type Position } from "@/lib/labels";
 import { ShortlistBoard } from "./shortlist-board";
+import { RecentForm } from "@/components/recent-form";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +15,7 @@ export default async function ShortlistPage({ searchParams }: { searchParams: Pr
   const session = await getSession();
   if (!session) redirect("/login");
   const { group = "status" } = await searchParams;
-  const rows = await getShortlist(session.workspaceId);
+  const [rows, form] = await Promise.all([getShortlist(session.workspaceId), getRecentForm(session.workspaceId)]);
 
   const byStatus = group !== "position";
   const columns = byStatus
@@ -33,24 +35,34 @@ export default async function ShortlistPage({ searchParams }: { searchParams: Pr
             {rows.length} megfigyelt játékos · a jegyzetek csak a klub stábja számára láthatók
           </p>
         </div>
-        <div className="inline-flex rounded-md bg-secondary p-1 text-xs">
-          {[
-            ["status", "Státusz szerint"],
-            ["position", "Poszt szerint"],
-          ].map(([k, label]) => (
-            <Link
-              key={k}
-              href={`/shortlist?group=${k}`}
-              className={cn(
-                "rounded px-3 py-1 font-medium text-muted-foreground",
-                (group === k || (k === "status" && group !== "position")) && "bg-card text-foreground shadow",
-              )}
-            >
-              {label}
-            </Link>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href="/shortlist/export"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
+            download
+          >
+            <Download className="h-3.5 w-3.5" /> Exportálás (CSV)
+          </a>
+          <div className="inline-flex rounded-md bg-secondary p-1 text-xs">
+            {[
+              ["status", "Státusz szerint"],
+              ["position", "Poszt szerint"],
+            ].map(([k, label]) => (
+              <Link
+                key={k}
+                href={`/shortlist?group=${k}`}
+                className={cn(
+                  "rounded px-3 py-1 font-medium text-muted-foreground",
+                  (group === k || (k === "status" && group !== "position")) && "bg-card text-foreground shadow",
+                )}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
+      <RecentForm rows={form} />
       <ShortlistBoard columns={columns as { key: NoteStatus | Position; label: string; rows: typeof rows }[]} />
     </div>
   );

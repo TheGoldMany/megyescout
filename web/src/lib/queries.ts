@@ -68,12 +68,15 @@ export async function getKpis(workspaceId: string) {
       ?.season;
     const startYear = season ? Number(season.slice(0, 4)) : new Date().getFullYear();
     // a single transaction client must run its queries sequentially
-    const tracked = await c.query<{ n: number }>("SELECT count(*)::int AS n FROM mv_player_explorer");
+    const tracked = await c.query<{ n: number }>(
+      "SELECT count(*)::int AS n FROM mv_player_explorer WHERE season = $1",
+      [season],
+    );
     const youth = await c.query<{ n: number }>(
       `SELECT count(*)::int AS n FROM mv_player_explorer
-       WHERE birth_year BETWEEN $1 AND $2 AND total_minutes >= 270
+       WHERE season = $5 AND birth_year BETWEEN $1 AND $2 AND total_minutes >= 270
          AND haversine_km($3, $4, club_lat, club_lng) <= 70`,
-      [startYear - 20, startYear - 18, ws.home_lat, ws.home_lng],
+      [startYear - 20, startYear - 18, ws.home_lat, ws.home_lng, season],
     );
     const shortlisted = await c.query<{ n: number }>(
       "SELECT count(*)::int AS n FROM scout_notes WHERE status IN ('shortlist','contacted')",
@@ -93,14 +96,26 @@ export async function getKpis(workspaceId: string) {
   });
 }
 
-export async function getTiers(): Promise<{ tier: number; n: number }[]> {
-  return query("SELECT tier, count(*)::int AS n FROM mv_player_explorer GROUP BY tier ORDER BY tier");
+export async function getSeasons(): Promise<string[]> {
+  const rows = await query<{ season: string }>("SELECT DISTINCT season FROM mv_player_explorer ORDER BY season DESC");
+  return rows.map((r) => r.season);
+}
+
+export async function getTiers(season: string): Promise<{ tier: number; n: number }[]> {
+  return query(
+    "SELECT tier, count(*)::int AS n FROM mv_player_explorer WHERE season = $1 GROUP BY tier ORDER BY tier",
+    [season],
+  );
 }
 
 // ---------------------------------------------------------------------------
 // explorer
 // ---------------------------------------------------------------------------
-export async function searchPlayers(workspaceId: string, f: Filters): Promise<{ rows: ExplorerRow[]; total: number }> {
+export async function searchPlayers(
+  workspaceId: string,
+  f: Filters,
+  season: string,
+): Promise<{ rows: ExplorerRow[]; total: number }> {
   const ws = await getWorkspace(workspaceId);
   const where: string[] = [];
   const params: unknown[] = [ws.home_lat, ws.home_lng];
@@ -108,6 +123,7 @@ export async function searchPlayers(workspaceId: string, f: Filters): Promise<{ 
     params.push(v);
     return `$${params.length}`;
   };
+  where.push(`e.season = ${p(season)}`);
 
   if (f.q) {
     const like = p(`%${f.q.trim()}%`);
@@ -171,15 +187,15 @@ export type PlayerDetail = ExplorerRow & {
   radar_vector: RadarVector | null;
 };
 
-export async function getPlayer(workspaceId: string, id: string): Promise<PlayerDetail | null> {
+export async function getPlayer(workspaceId: string, id: string, season?: string): Promise<PlayerDetail | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const ws = await getWorkspace(workspaceId);
   const rows = await query<PlayerDetail>(
     `SELECT e.*, p.mlsz_player_id, p.birth_date::text AS birth_date, p.position_confidence, p.highest_tier_played,
             round(haversine_km($2, $3, e.club_lat, e.club_lng)::numeric, 1) AS distance_km
      FROM mv_player_explorer e JOIN players p ON p.id = e.player_id
-     WHERE e.player_id = $1`,
-    [id, ws.home_lat, ws.home_lng],
+     WHERE e.player_id = $1 AND (e.season = $4 OR ($4::text IS NULL AND e.is_latest))`,
+    [id, ws.home_lat, ws.home_lng, season ?? null],
   );
   if (rows[0]) return rows[0];
   // players without a senior row this season (youth / futsal only) still get a basic page
@@ -264,19 +280,29 @@ export type SimilarPlayer = {
   archetypes: string[];
 };
 
-export async function getSimilar(workspaceId: string, id: string, limit = 4): Promise<SimilarPlayer[]> {
+export async function getSimilar(workspaceId: string, id: string, season: string | null, limit = 4): Promise<SimilarPlayer[]> {
+  if (!season) return [];
   const ws = await getWorkspace(workspaceId);
   return query<SimilarPlayer>(
     `SELECT e.player_id, e.full_name, e.birth_year, e.primary_position, e.club_name, e.competition_short,
             e.scouting_index, e.archetypes, s.similarity,
             round(haversine_km($3, $4, e.club_lat, e.club_lng)::numeric, 1) AS distance_km
      FROM player_similarities s
-     JOIN mv_player_explorer e ON e.player_id = s.similar_player_id
-     WHERE s.player_id = $1
+     JOIN mv_player_explorer e ON e.player_id = s.similar_player_id AND e.season = s.season
+     WHERE s.player_id = $1 AND s.season = $5
      ORDER BY s.rank
      LIMIT $2`,
-    [id, limit, ws.home_lat, ws.home_lng],
+    [id, limit, ws.home_lat, ws.home_lng, season],
   );
+}
+
+/** Seasons in which the player has a senior 11v11 explorer row (for the profile season switcher). */
+export async function getPlayerSeasons(id: string): Promise<string[]> {
+  const rows = await query<{ season: string }>(
+    "SELECT season FROM mv_player_explorer WHERE player_id = $1 ORDER BY season DESC",
+    [id],
+  );
+  return rows.map((r) => r.season);
 }
 
 export type RecentMatch = {
@@ -383,7 +409,7 @@ export async function getShortlist(workspaceId: string): Promise<ShortlistRow[]>
               round(haversine_km($1, $2, COALESCE(e.club_lat, cl.latitude), COALESCE(e.club_lng, cl.longitude))::numeric, 1) AS distance_km
        FROM scout_notes n
        JOIN players p ON p.id = n.player_id
-       LEFT JOIN mv_player_explorer e ON e.player_id = n.player_id
+       LEFT JOIN mv_player_explorer e ON e.player_id = n.player_id AND e.is_latest
        LEFT JOIN clubs cl ON cl.id = p.current_club_id
        ORDER BY n.rating DESC NULLS LAST, e.scouting_index DESC NULLS LAST`,
       [ws.home_lat, ws.home_lng],
@@ -398,7 +424,151 @@ export async function getCompare(workspaceId: string, ids: string[]): Promise<Pl
   const ws = await getWorkspace(workspaceId);
   return query<PlayerDetail>(
     `SELECT e.*, round(haversine_km($2, $3, e.club_lat, e.club_lng)::numeric, 1) AS distance_km
-     FROM mv_player_explorer e WHERE e.player_id = ANY($1::uuid[])`,
+     FROM mv_player_explorer e WHERE e.player_id = ANY($1::uuid[]) AND e.is_latest`,
     [clean, ws.home_lat, ws.home_lng],
   );
+}
+
+// ---------------------------------------------------------------------------
+// "Friss forma": what did the watched players do in their club's latest match?
+// ---------------------------------------------------------------------------
+export type FormRow = {
+  player_id: string;
+  full_name: string;
+  status: NoteStatus;
+  primary_position: Position | null;
+  club_name: string;
+  opponent: string;
+  is_home: boolean;
+  match_date: string | null;
+  round_number: number | null;
+  competition_short: string | null;
+  goals_for: number;
+  goals_against: number;
+  played: boolean;
+  is_starter: boolean | null;
+  minute_in: number | null;
+  minutes_played: number | null;
+  goals: number | null;
+  yellow_cards: number | null;
+  red_cards: number | null;
+};
+
+export async function getRecentForm(workspaceId: string): Promise<FormRow[]> {
+  return withWorkspace(workspaceId, async (c) => {
+    const r = await c.query<FormRow>(
+      `WITH watched AS (
+          SELECT n.player_id, n.status, p.full_name, p.primary_position,
+                 COALESCE(e.club_id, p.current_club_id) AS club_id
+          FROM scout_notes n
+          JOIN players p ON p.id = n.player_id
+          LEFT JOIN mv_player_explorer e ON e.player_id = n.player_id AND e.is_latest
+          WHERE n.status <> 'rejected'
+       ), last_match AS (
+          SELECT DISTINCT ON (w.player_id) w.*, m.id AS match_id, m.match_date, m.round_number,
+                 m.home_club_id, m.away_club_id, m.home_goals, m.away_goals, comp.short_name AS competition_short
+          FROM watched w
+          JOIN matches m ON m.status = 'played' AND (m.home_club_id = w.club_id OR m.away_club_id = w.club_id)
+          JOIN competitions comp ON comp.id = m.competition_id
+          ORDER BY w.player_id, m.match_date DESC NULLS LAST
+       )
+       SELECT lm.player_id, lm.full_name, lm.status, lm.primary_position, cl.name AS club_name,
+              opp.name AS opponent, lm.home_club_id = lm.club_id AS is_home,
+              lm.match_date::text, lm.round_number, lm.competition_short,
+              CASE WHEN lm.home_club_id = lm.club_id THEN lm.home_goals ELSE lm.away_goals END AS goals_for,
+              CASE WHEN lm.home_club_id = lm.club_id THEN lm.away_goals ELSE lm.home_goals END AS goals_against,
+              a.player_id IS NOT NULL AS played, a.is_starter, a.minute_in, a.minutes_played, a.goals,
+              a.yellow_cards, a.red_cards
+       FROM last_match lm
+       JOIN clubs cl ON cl.id = lm.club_id
+       JOIN clubs opp ON opp.id = CASE WHEN lm.home_club_id = lm.club_id THEN lm.away_club_id ELSE lm.home_club_id END
+       LEFT JOIN match_appearances a ON a.match_id = lm.match_id AND a.player_id = lm.player_id
+       ORDER BY lm.match_date DESC NULLS LAST, a.goals DESC NULLS LAST, a.minutes_played DESC NULLS LAST`,
+    );
+    return r.rows;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// data health ("Adatállapot")
+// ---------------------------------------------------------------------------
+export type SyncRun = {
+  id: string;
+  source: string;
+  mode: string;
+  started_at: string;
+  finished_at: string | null;
+  matches_upserted: number;
+  players_upserted: number;
+  status: "running" | "ok" | "failed";
+  error: string | null;
+};
+
+export async function getSyncRuns(limit = 12): Promise<SyncRun[]> {
+  return query<SyncRun>(
+    `SELECT id, source, mode, started_at::text, finished_at::text, matches_upserted, players_upserted, status, error
+     FROM sync_runs ORDER BY started_at DESC LIMIT $1`,
+    [limit],
+  );
+}
+
+export type Coverage = {
+  competition_id: string;
+  season: string;
+  name: string;
+  short_name: string | null;
+  category: string;
+  tier: number;
+  matches: number;
+  matches_with_lineups: number;
+  last_round: number | null;
+  last_match: string | null;
+  players: number;
+  last_scraped: string | null;
+};
+
+export async function getCoverage(): Promise<Coverage[]> {
+  return query<Coverage>(
+    `SELECT c.id AS competition_id, c.season, c.name, c.short_name, c.category, c.tier,
+            count(DISTINCT m.id)::int AS matches,
+            count(DISTINCT a.match_id)::int AS matches_with_lineups,
+            max(m.round_number) AS last_round,
+            max(m.match_date)::text AS last_match,
+            count(DISTINCT a.player_id)::int AS players,
+            max(m.scraped_at)::text AS last_scraped
+     FROM competitions c
+     LEFT JOIN matches m ON m.competition_id = c.id AND m.status = 'played'
+     LEFT JOIN match_appearances a ON a.match_id = m.id
+     GROUP BY c.id
+     ORDER BY c.season DESC, c.tier, c.name`,
+  );
+}
+
+export type UnlocatedClub = { id: string; name: string; players: number };
+
+export async function getUnlocatedClubs(): Promise<UnlocatedClub[]> {
+  return query<UnlocatedClub>(
+    `SELECT cl.id, cl.name, count(p.id)::int AS players
+     FROM clubs cl LEFT JOIN players p ON p.current_club_id = cl.id
+     WHERE cl.latitude IS NULL OR cl.longitude IS NULL
+     GROUP BY cl.id ORDER BY players DESC, cl.name`,
+  );
+}
+
+export async function getDataQuality() {
+  const rows = await query<{
+    players: number;
+    no_birth_year: number;
+    no_position: number;
+    no_profile: number;
+    academy: number;
+  }>(
+    `SELECT count(*)::int AS players,
+            count(*) FILTER (WHERE birth_year IS NULL)::int AS no_birth_year,
+            count(*) FILTER (WHERE primary_position IS NULL)::int AS no_position,
+            count(*) FILTER (WHERE profile_scraped_at IS NULL)::int AS no_profile,
+            count(*) FILTER (WHERE has_academy_pedigree)::int AS academy
+     FROM players`,
+  );
+  return rows[0];
 }

@@ -23,10 +23,14 @@ export function ExplorerFilters({
   youthWindow,
   tiers,
   defaultKm,
+  seasons,
+  season,
 }: {
   youthWindow: [number, number];
   tiers: { tier: number; n: number }[];
   defaultKm: number;
+  seasons: string[];
+  season: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -64,6 +68,24 @@ export function ExplorerFilters({
   return (
     <div className="rounded-lg border bg-card p-3 sm:p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+        {seasons.length > 1 && (
+          <div className="lg:w-36">
+            <Label htmlFor="season">Szezon</Label>
+            <NativeSelect
+              id="season"
+              value={season}
+              onChange={(e) => push({ season: e.target.value === seasons[0] ? null : e.target.value, byMin: null, byMax: null })}
+              className="mt-1"
+            >
+              {seasons.map((s, i) => (
+                <option key={s} value={s}>
+                  {s}
+                  {i === 0 ? " (aktuális)" : ""}
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
+        )}
         <div className="relative flex-1">
           <Label htmlFor="q">Keresés</Label>
           <Search className="pointer-events-none absolute bottom-2.5 left-2.5 h-4 w-4 text-muted-foreground" />

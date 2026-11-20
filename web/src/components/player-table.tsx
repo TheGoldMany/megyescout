@@ -100,7 +100,7 @@ export function PlayerTable({
             {rows.map((r) => (
               <tr key={r.player_id} className="border-b border-border/60 transition hover:bg-secondary/40">
                 <td className="py-2 pl-4 pr-2">
-                  <Link href={`/players/${r.player_id}`} className="group flex items-center gap-1.5 font-medium">
+                  <Link href={playerHref(r.player_id, sp)} className="group flex items-center gap-1.5 font-medium">
                     <span className="group-hover:text-primary">{titleCase(r.full_name)}</span>
                     {r.has_academy_pedigree && (
                       <Tip content="Akadémiai előélet">
@@ -163,7 +163,7 @@ export function PlayerTable({
       <ul className="divide-y md:hidden">
         {rows.map((r) => (
           <li key={r.player_id}>
-            <Link href={`/players/${r.player_id}`} className="flex items-center gap-3 px-3 py-2.5 active:bg-secondary/60">
+            <Link href={playerHref(r.player_id, sp)} className="flex items-center gap-3 px-3 py-2.5 active:bg-secondary/60">
               <IndexBadge value={r.scouting_index} className="h-10 min-w-11 text-base" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 font-medium">
@@ -219,4 +219,9 @@ export function PlayerTable({
       )}
     </div>
   );
+}
+
+/** Keep the season context when opening a profile from a past-season list. */
+function playerHref(id: string, sp: RawParams) {
+  return typeof sp.season === "string" ? `/players/${id}?season=${encodeURIComponent(sp.season)}` : `/players/${id}`;
 }

@@ -491,7 +491,7 @@ def seed_notes(conn) -> None:
     conn.execute(text("SELECT set_config('app.workspace_id', :w, true)"), {"w": HOME_WORKSPACE})
     picks = conn.execute(text("""
         SELECT player_id, full_name, primary_position, club_name FROM mv_player_explorer
-        WHERE club_name <> 'Lajosmizsei VLC' AND scouting_index IS NOT NULL
+        WHERE is_latest AND club_name <> 'Lajosmizsei VLC' AND scouting_index IS NOT NULL
         ORDER BY scouting_index DESC LIMIT 14
     """)).all()
     templates = [

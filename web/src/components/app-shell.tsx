@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Radar, ClipboardList, LogOut, Search } from "lucide-react";
+import { Radar, ClipboardList, Database, LogOut, Search } from "lucide-react";
 import { getSession, authEnabled } from "@/lib/session";
 import { getWorkspace } from "@/lib/queries";
 import { logoutAction } from "@/app/actions";
@@ -27,6 +27,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
               </NavLink>
               <NavLink href="/shortlist" icon={<ClipboardList className="h-4 w-4" />}>
                 Igazolási tábla
+              </NavLink>
+              <NavLink href="/data" icon={<Database className="h-4 w-4" />}>
+                Adatállapot
               </NavLink>
             </nav>
           )}

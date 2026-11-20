@@ -1,9 +1,10 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { History } from "lucide-react";
 import { KpiBar } from "@/components/kpi-bar";
 import { ExplorerFilters } from "@/components/explorer-filters";
 import { PlayerTable } from "@/components/player-table";
-import { getKpis, getTiers, searchPlayers } from "@/lib/queries";
+import { getKpis, getSeasons, getTiers, searchPlayers } from "@/lib/queries";
 import { DEFAULT_MAX_KM, parseFilters, type RawParams } from "@/lib/filters";
 import { getSession } from "@/lib/session";
 
@@ -14,12 +15,18 @@ export default async function ExplorerPage({ searchParams }: { searchParams: Pro
   if (!session) redirect("/login");
   const sp = await searchParams;
   const f = parseFilters(sp);
+  const seasons = await getSeasons();
+  const requested = typeof sp.season === "string" ? sp.season : undefined;
+  const season = requested && seasons.includes(requested) ? requested : (seasons[0] ?? "");
+  const isPast = season !== seasons[0];
+
   const [kpis, tiers, result] = await Promise.all([
     getKpis(session.workspaceId),
-    getTiers(),
-    searchPlayers(session.workspaceId, f),
+    getTiers(season),
+    searchPlayers(session.workspaceId, f, season),
   ]);
-  const seasonStart = Number(kpis.season.slice(0, 4)) || new Date().getFullYear();
+  const seasonStart = Number(season.slice(0, 4)) || new Date().getFullYear();
+  const youthWindow: [number, number] = [seasonStart - 20, seasonStart - 18];
 
   return (
     <div className="space-y-4">
@@ -33,8 +40,20 @@ export default async function ExplorerPage({ searchParams }: { searchParams: Pro
       </div>
       <KpiBar k={kpis} />
       <Suspense>
-        <ExplorerFilters youthWindow={kpis.youthWindow} tiers={tiers} defaultKm={DEFAULT_MAX_KM} />
+        <ExplorerFilters
+          youthWindow={youthWindow}
+          tiers={tiers}
+          defaultKm={DEFAULT_MAX_KM}
+          seasons={seasons}
+          season={season}
+        />
       </Suspense>
+      {isPast && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          <History className="h-4 w-4 shrink-0" />
+          A(z) {season} szezon adatait látod. Az életkor és a klub az akkori állapotot mutatja.
+        </div>
+      )}
       <PlayerTable rows={result.rows} total={result.total} f={f} sp={sp} seasonStart={seasonStart} />
     </div>
   );
