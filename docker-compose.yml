@@ -1,0 +1,39 @@
+# Local stack: Postgres 16 + ETL worker + Next.js web app.
+#   docker compose up -d db
+#   docker compose run --rm etl python cli.py seed        # demo data (or: cli.py scrape --mode backfill)
+#   docker compose up -d etl web                           # http://localhost:3000
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: hunscout
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hunscout"]
+      interval: 5s
+      retries: 10
+
+  etl:
+    build: { context: ., dockerfile: etl/Dockerfile }
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/hunscout
+      MLSZ_REQUEST_DELAY: "0.5"
+    depends_on: { db: { condition: service_healthy } }
+    restart: unless-stopped
+
+  web:
+    build: { context: ./web }
+    environment:
+      # least-privilege role created by db/migrations/003_web_role.sql (RLS applies to it)
+      DATABASE_URL: postgresql://hunscout_web:hunscout_web@db:5432/hunscout
+      WORKSPACE_ID: lajosmizse_vlc
+      WORKSPACE_PASSCODE: ${WORKSPACE_PASSCODE:-}
+      AUTH_SECRET: ${AUTH_SECRET:-change-me}
+    ports: ["3000:3000"]
+    depends_on: { db: { condition: service_healthy } }
+
+volumes:
+  pgdata:
