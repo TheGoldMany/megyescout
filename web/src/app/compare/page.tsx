@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getCompare } from "@/lib/queries";
-import { getSession } from "@/lib/session";
+import { sessionOrLogin } from "@/lib/session";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlayerRadar } from "@/components/radar-chart";
 import { ArchetypeBadges, IndexBadge, OnOff, PositionBadge } from "@/components/badges";
@@ -12,9 +11,8 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Összehasonlítás" };
 
 export default async function ComparePage({ searchParams }: { searchParams: Promise<{ ids?: string }> }) {
-  const session = await getSession();
-  if (!session) redirect("/login");
   const { ids = "" } = await searchParams;
+  const session = await sessionOrLogin(ids ? `/compare?ids=${encodeURIComponent(ids)}` : "/compare");
   const players = await getCompare(session.workspaceId, ids.split(","));
   const seasonStart = players[0]?.season ? Number(players[0].season.slice(0, 4)) : new Date().getFullYear();
 

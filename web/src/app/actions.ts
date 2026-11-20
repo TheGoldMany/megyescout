@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { deleteNote, upsertNote } from "@/lib/queries";
-import { DEFAULT_WORKSPACE, SESSION_COOKIE, requireSession, sign } from "@/lib/session";
+import { DEFAULT_WORKSPACE, SESSION_COOKIE, requireSession, safeNextPath, sign } from "@/lib/session";
 
 const noteSchema = z.object({
   playerId: z.string().uuid(),
@@ -20,6 +20,7 @@ const noteSchema = z.object({
 });
 
 export type ActionResult = { ok: boolean; message: string };
+export type LoginResult = ActionResult & { name?: string };
 
 function emptyToNull(v: FormDataEntryValue | null) {
   const s = typeof v === "string" ? v.trim() : "";
@@ -70,12 +71,13 @@ export async function removeNoteAction(playerId: string) {
   revalidatePath(`/players/${playerId}`);
 }
 
-export async function loginAction(_prev: ActionResult | null, form: FormData): Promise<ActionResult> {
+export async function loginAction(_prev: LoginResult | null, form: FormData): Promise<LoginResult> {
   const name = String(form.get("name") ?? "").trim();
   const code = String(form.get("passcode") ?? "");
   if (!name) return { ok: false, message: "Add meg a neved." };
   if (!process.env.WORKSPACE_PASSCODE || code !== process.env.WORKSPACE_PASSCODE) {
-    return { ok: false, message: "Hibás belépési kód." };
+    // echo the name back: React resets the form after an action, the user should only retype the code
+    return { ok: false, message: "Hibás belépési kód.", name };
   }
   const store = await cookies();
   store.set(SESSION_COOKIE, sign({ workspaceId: DEFAULT_WORKSPACE, name }), {
@@ -85,7 +87,7 @@ export async function loginAction(_prev: ActionResult | null, form: FormData): P
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });
-  redirect(String(form.get("next") || "/"));
+  redirect(safeNextPath(String(form.get("next") ?? "")));
 }
 
 export async function logoutAction() {

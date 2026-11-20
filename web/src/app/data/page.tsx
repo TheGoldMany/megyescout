@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Clock, Database, MapPinOff, XCircle } from "lucide-react";
 import { getCoverage, getDataQuality, getSyncRuns, getUnlocatedClubs } from "@/lib/queries";
-import { getSession } from "@/lib/session";
+import { sessionOrLogin } from "@/lib/session";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CATEGORY_LABEL, TIER_LABEL } from "@/lib/labels";
 import { clubCase, cn, fmtDateTime, fmtInt } from "@/lib/utils";
@@ -22,8 +21,7 @@ function duration(start: string, end: string | null) {
 }
 
 export default async function DataHealthPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  await sessionOrLogin("/data");
   const [runs, coverage, unlocated, quality] = await Promise.all([
     getSyncRuns(),
     getCoverage(),

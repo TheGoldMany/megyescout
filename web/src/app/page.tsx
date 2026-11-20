@@ -1,19 +1,18 @@
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
 import { History } from "lucide-react";
 import { KpiBar } from "@/components/kpi-bar";
 import { ExplorerFilters } from "@/components/explorer-filters";
 import { PlayerTable } from "@/components/player-table";
 import { getKpis, getSeasons, getTiers, searchPlayers } from "@/lib/queries";
 import { DEFAULT_MAX_KM, parseFilters, type RawParams } from "@/lib/filters";
-import { getSession } from "@/lib/session";
+import { sessionOrLogin } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function ExplorerPage({ searchParams }: { searchParams: Promise<RawParams> }) {
-  const session = await getSession();
-  if (!session) redirect("/login");
   const sp = await searchParams;
+  const qs = new URLSearchParams(Object.entries(sp).filter((e): e is [string, string] => typeof e[1] === "string"));
+  const session = await sessionOrLogin(qs.size ? `/?${qs}` : "/");
   const f = parseFilters(sp);
   const seasons = await getSeasons();
   const requested = typeof sp.season === "string" ? sp.season : undefined;

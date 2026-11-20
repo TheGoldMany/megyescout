@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink, GraduationCap, MapPin, Info } from "lucide-react";
 import {
   getCareer,
@@ -11,7 +11,7 @@ import {
   getPlayerSeasons,
   type CareerRow,
 } from "@/lib/queries";
-import { getSession } from "@/lib/session";
+import { getSession, sessionOrLogin } from "@/lib/session";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArchetypeBadges, IndexBadge, IndexRing, OnOff, PositionBadge } from "@/components/badges";
 import { PlayerRadar } from "@/components/radar-chart";
@@ -55,9 +55,8 @@ export default async function PlayerPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ season?: string }>;
 }) {
-  const session = await getSession();
-  if (!session) redirect("/login");
   const { id } = await params;
+  const session = await sessionOrLogin(`/players/${id}`);
   const { season: requestedSeason } = await searchParams;
   const seasons = await getPlayerSeasons(id).catch(() => [] as string[]);
   const season = requestedSeason && seasons.includes(requestedSeason) ? requestedSeason : undefined;

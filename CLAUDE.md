@@ -83,8 +83,11 @@ cd etl && uvicorn api:app --port 8000  # etl service locally (or `vercel dev` fr
   queries by season (default = newest).
 - **Vercel:** env vars are shared by all services, so the ETL reads `ETL_DATABASE_URL` (owner role) before
   `DATABASE_URL` (which belongs to the web app's `hunscout_web` role). Never set `ETL_URL` by hand on Vercel:
-  the binding injects it at runtime (functions only, not builds or middleware). `/api/cron/*` is excluded from
-  the login middleware and checks `CRON_SECRET`.
+  the binding injects it at runtime (functions only, not builds or middleware). `/api/cron/*` checks `CRON_SECRET`.
+- **No Edge Runtime, no `middleware.ts`:** Vercel services reject Edge output ("Edge Runtime is not supported in
+  services"). Auth is enforced per page with `sessionOrLogin(path)`, per route/action with `getSession` /
+  `requireSession`. `npm run check:no-edge` (CI, after build) fails if Edge output reappears. Redirect targets
+  from user input go through `safeNextPath` (open-redirect guard).
 - **Vercel plan = Hobby:** every function (web and etl) is capped at 300 s and schedule jitter is fixed at
   15 min. One schedule per competition, 15 min apart; every etl `/sync` call carries `budget_seconds`
   (scraper stops starting requests near the deadline, leftovers are reported as `truncated` /

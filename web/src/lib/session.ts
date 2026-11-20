@@ -1,5 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 /**
@@ -53,5 +54,22 @@ export async function getSession(): Promise<Session | null> {
 export async function requireSession(): Promise<Session> {
   const s = await getSession();
   if (!s) throw new Error("Nincs bejelentkezve");
+  return s;
+}
+
+/** Only same-site paths: "/x" yes; "//evil.example", "/\evil", "https://…" no (open-redirect guard). */
+export function safeNextPath(next: string | null | undefined): string {
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return "/";
+  return next;
+}
+
+/**
+ * Server-side gate for pages: returns the session or redirects to /login?next=<path>.
+ * (There is deliberately no middleware: Vercel services do not run Edge functions, and every
+ * page, route handler and server action checks the session itself.)
+ */
+export async function sessionOrLogin(next: string): Promise<Session> {
+  const s = await getSession();
+  if (!s) redirect(`/login?next=${encodeURIComponent(safeNextPath(next))}`);
   return s;
 }

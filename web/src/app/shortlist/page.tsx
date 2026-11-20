@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Download } from "lucide-react";
 import { getRecentForm, getShortlist } from "@/lib/queries";
-import { getSession } from "@/lib/session";
+import { sessionOrLogin } from "@/lib/session";
 import { POSITION_LABEL, STATUS_LABEL, STATUS_ORDER, type NoteStatus, type Position } from "@/lib/labels";
 import { ShortlistBoard } from "./shortlist-board";
 import { RecentForm } from "@/components/recent-form";
@@ -12,8 +11,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Igazolási tábla" };
 
 export default async function ShortlistPage({ searchParams }: { searchParams: Promise<{ group?: string }> }) {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const session = await sessionOrLogin("/shortlist");
   const { group = "status" } = await searchParams;
   const [rows, form] = await Promise.all([getShortlist(session.workspaceId), getRecentForm(session.workspaceId)]);
 

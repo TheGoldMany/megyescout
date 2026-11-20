@@ -39,6 +39,8 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm run lint
       - run: npm run build
+      - name: No Edge Runtime output (Vercel services only run Node.js functions)
+        run: npm run check:no-edge
 
   e2e:
     name: E2E (seeded Postgres + Playwright)
