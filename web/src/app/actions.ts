@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { deleteNote, upsertNote } from "@/lib/queries";
-import { DEFAULT_WORKSPACE, SESSION_COOKIE, requireSession, safeNextPath, sign } from "@/lib/session";
+import { DEFAULT_WORKSPACE, SESSION_COOKIE, authConfigProblems, passcodeMatches, requireSession, safeNextPath, sign } from "@/lib/session";
 
 const noteSchema = z.object({
   playerId: z.string().uuid(),
@@ -75,7 +75,10 @@ export async function loginAction(_prev: LoginResult | null, form: FormData): Pr
   const name = String(form.get("name") ?? "").trim();
   const code = String(form.get("passcode") ?? "");
   if (!name) return { ok: false, message: "Add meg a neved." };
-  if (!process.env.WORKSPACE_PASSCODE || code !== process.env.WORKSPACE_PASSCODE) {
+  if (authConfigProblems().length) {
+    return { ok: false, message: "A belépés nincs beállítva ezen a telepítésen.", name };
+  }
+  if (!passcodeMatches(code)) {
     // echo the name back: React resets the form after an action, the user should only retype the code
     return { ok: false, message: "Hibás belépési kód.", name };
   }
