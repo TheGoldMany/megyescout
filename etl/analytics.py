@@ -56,14 +56,21 @@ def age_curve_score(age: int | None) -> float:
     return float(table.get(age, 20))
 
 
-def infer_position(shirts: list[tuple[int | None, int]], goals_per_90: float, sub_in_share: float
-                   ) -> tuple[str, str | None, float]:
+SUB_PAIR_WEIGHT = 60  # one like-for-like substitution ~ two thirds of a match worth of shirt evidence
+
+
+def infer_position(shirts: list[tuple[int | None, int]], goals_per_90: float, sub_in_share: float,
+                   sub_partners: list[tuple[str, float]] | None = None) -> tuple[str, str | None, float]:
     """Infer (primary, secondary, confidence) from minutes-weighted shirt numbers.
 
     shirts: list of (shirt_number, minutes). Unknown numbers (13-30, 77, ...) carry no
     shirt vote and fall back to goal output. goals_per_90 then nudges the result
     (a "defender" scoring 0.6/90 is really a midfielder/forward), and frequent
     substitute entries lean attacking (coaches chase games with forwards).
+
+    sub_partners: (partner_position, partner_confidence) for every substitution the player
+    was part of ("csereirány"). Coaches mostly change like for like, so each pairing votes
+    for the partner's position, weighted by how sure we are about the partner.
     """
     votes: Counter[str] = Counter()
     unknown = 0
@@ -74,6 +81,14 @@ def infer_position(shirts: list[tuple[int | None, int]], goals_per_90: float, su
             votes[pos] += w
         else:
             unknown += w
+    partner_votes: Counter[str] = Counter()
+    for partner_pos, partner_conf in sub_partners or []:
+        partner_votes[partner_pos] += SUB_PAIR_WEIGHT * max(0.0, min(1.0, partner_conf))
+    if partner_votes:
+        # pairing evidence replaces part of the (weak) goal-output prior for unknown numbers
+        absorbed = min(unknown, sum(partner_votes.values()))
+        unknown -= absorbed * 0.5
+        votes.update(partner_votes)
     total = sum(votes.values()) + unknown
     if total == 0:
         return "MID", None, 0.0
@@ -209,7 +224,7 @@ def cosine_top_n(ids: list, vectors: np.ndarray, groups: list[str], n: int = SIM
 def _load(conn) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     apps = pd.read_sql(text("""
         SELECT a.player_id, a.club_id, a.shirt_number, a.is_starter, a.minutes_played, a.goals, a.own_goals,
-               a.yellow_cards, a.red_cards,
+               a.yellow_cards, a.red_cards, a.replaced_player_id,
                m.id AS match_id, m.home_club_id, m.away_club_id, m.home_goals, m.away_goals,
                c.id AS competition_id, c.season, c.category, c.tier, c.strength_multiplier::float AS multiplier
         FROM match_appearances a
@@ -262,16 +277,30 @@ def compute(apps: pd.DataFrame, matches: pd.DataFrame, players: pd.DataFrame) ->
     club_goals = club_matches.groupby(["competition_id", "club_id"])["gf"].sum().rename("team_goals")
     club_games = club_matches.groupby(["competition_id", "club_id"]).size().rename("team_matches")
 
-    # ---- positions (senior 11v11 only, all seasons) ----
+    # ---- positions (senior 11v11 + cup, all seasons) ----
+    # pass 1: shirt numbers + goal output; pass 2: add substitution-direction evidence
     senior = apps[apps["category"].isin([SENIOR, "cup"])]
-    pos_rows = []
+    features = {}
     for pid, g in senior.groupby("player_id"):
         mins = g["minutes_played"].sum()
         g90 = g["goals"].sum() / mins * 90 if mins else 0.0
         sub_share = (~g["is_starter"]).mean()
         shirts = list(zip(g["shirt_number"].where(g["shirt_number"].notna(), None).map(
             lambda x: int(x) if x is not None else None), g["minutes_played"]))
-        primary, secondary, conf = infer_position(shirts, g90, sub_share)
+        features[pid] = (shirts, g90, sub_share)
+    first = {pid: infer_position(*f) for pid, f in features.items()}
+
+    partners: dict = {}
+    if "replaced_player_id" in senior.columns:
+        pairs = senior[senior["replaced_player_id"].notna()][["player_id", "replaced_player_id"]]
+        for sub_id, off_id in pairs.itertuples(index=False):
+            if sub_id in first and off_id in first:
+                partners.setdefault(sub_id, []).append((first[off_id][0], first[off_id][2]))
+                partners.setdefault(off_id, []).append((first[sub_id][0], first[sub_id][2]))
+
+    pos_rows = []
+    for pid, f in features.items():
+        primary, secondary, conf = infer_position(*f, sub_partners=partners.get(pid)) if pid in partners else first[pid]
         pos_rows.append({"player_id": pid, "primary_position": primary, "secondary_position": secondary,
                          "position_confidence": conf})
     positions = pd.DataFrame(pos_rows)

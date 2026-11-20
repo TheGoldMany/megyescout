@@ -142,10 +142,16 @@ def load_match_report(conn: Connection, report: MatchReport, competition_id: UUI
     # Late disciplinary corrections: rewrite the lineup wholesale.
     conn.execute(text("DELETE FROM match_events WHERE match_id = :m"), {"m": match_id})
     keep: list[UUID] = []
-    for app in report.home_players:
-        keep.append(_write_appearance(conn, match_id, home_id, app))
-    for app in report.away_players:
-        keep.append(_write_appearance(conn, match_id, away_id, app))
+    for club_id, players in ((home_id, report.home_players), (away_id, report.away_players)):
+        ids: dict[str, UUID] = {}
+        for app in players:
+            ids[app.mlsz_player_id] = _write_appearance(conn, match_id, club_id, app)
+        keep.extend(ids.values())
+        # substitution direction: substitute -> the teammate they replaced
+        for app in players:
+            replaced = ids.get(app.partner_mlsz_player_id or "") if not app.is_starter else None
+            conn.execute(text("UPDATE match_appearances SET replaced_player_id = :r WHERE match_id = :m AND player_id = :p"),
+                         {"r": replaced, "m": match_id, "p": ids[app.mlsz_player_id]})
     if keep:
         conn.execute(text("DELETE FROM match_appearances WHERE match_id = :m AND NOT (player_id = ANY(:keep))"),
                      {"m": match_id, "keep": keep})

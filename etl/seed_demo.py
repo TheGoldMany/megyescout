@@ -259,6 +259,7 @@ class AppRow:
     goals: int = 0
     yellow: int = 0
     red: int = 0
+    replaced: DemoPlayer | None = None
 
 
 def simulate_side(xi: list[DemoPlayer], bench: list[DemoPlayer], goals_for: int) -> list[AppRow]:
@@ -274,11 +275,15 @@ def simulate_side(xi: list[DemoPlayer], bench: list[DemoPlayer], goals_for: int)
         candidates = [p for p in outfield_xi if rows[p.id].minute_out == 90 and rows[p.id].is_starter]
         if not candidates:
             break
+        # mostly like-for-like changes (as in real lower-league football), sometimes tactical
+        same = [p for p in candidates if p.position == sub.position]
+        if same and RNG.random() < 0.72:
+            candidates = same
         candidates.sort(key=lambda p: p.talent + (0.1 if p.position == "DEF" else 0) + RNG.gauss(0, 0.12))
         off = candidates[0]
         minute = RNG.choice([46, 46] + list(range(55, 89)))
         rows[off.id].minute_out = minute
-        rows[sub.id] = AppRow(sub, False, minute, 90)
+        rows[sub.id] = AppRow(sub, False, minute, 90, replaced=off)
 
     # cards
     for r in rows.values():
@@ -422,7 +427,8 @@ def seed(reset: bool = False) -> dict:
                         for r in simulate_side(xi, bench, gf):
                             app_rows.append(dict(m=mid, p=r.player.id, c=club.id, n=r.player.shirt, s=r.is_starter,
                                                  mi=r.minute_in, mo=r.minute_out, mp=max(0, r.minute_out - r.minute_in),
-                                                 g=r.goals, y=min(r.yellow, 1) if not r.red else r.yellow, r=r.red))
+                                                 g=r.goals, y=min(r.yellow, 1) if not r.red else r.yellow, r=r.red,
+                                                 rp=r.replaced.id if r.replaced else None))
         conn.execute(text("""
             INSERT INTO matches (id, mlsz_match_id, competition_id, round_number, match_date, home_club_id, away_club_id,
                                  home_goals, away_goals, status, scraped_at)
@@ -430,8 +436,8 @@ def seed(reset: bool = False) -> dict:
         """), match_rows)
         conn.execute(text("""
             INSERT INTO match_appearances (match_id, player_id, club_id, shirt_number, is_starter, minute_in, minute_out,
-                                           minutes_played, goals, yellow_cards, red_cards)
-            VALUES (:m, :p, :c, :n, :s, :mi, :mo, :mp, :g, :y, :r)
+                                           minutes_played, goals, yellow_cards, red_cards, replaced_player_id)
+            VALUES (:m, :p, :c, :n, :s, :mi, :mo, :mp, :g, :y, :r, :rp)
         """), app_rows)
 
         # career history
@@ -460,11 +466,24 @@ def seed(reset: bool = False) -> dict:
         db.finish_sync(conn, run_id, matches=len(match_rows), players=len(player_rows))
 
     summary = analytics.run()
+    summary["position_accuracy"] = position_accuracy(clubs)
 
     with db.engine().begin() as conn:
         seed_notes(conn)
     return {"clubs": len(clubs), "players": len(player_rows), "matches": len(match_rows),
             "appearances": len(app_rows), "stints": len(stint_rows), **summary}
+
+
+def position_accuracy(clubs: list[DemoClub]) -> float:
+    """Share of demo players whose inferred primary position equals the generated one."""
+    truth = {p.id: p.position for c in clubs for p in c.squad}
+    with db.engine().connect() as conn:
+        rows = conn.execute(text("SELECT id, primary_position FROM players WHERE mlsz_player_id LIKE 'demo-%' "
+                                 "AND primary_position IS NOT NULL")).all()
+    hits = sum(1 for r in rows if truth.get(r.id) == r.primary_position)
+    acc = round(hits / len(rows), 3) if rows else 0.0
+    log.info("position inference accuracy on demo data: %.1f%% (%d players)", acc * 100, len(rows))
+    return acc
 
 
 def seed_notes(conn) -> None:

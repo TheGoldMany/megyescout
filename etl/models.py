@@ -25,6 +25,9 @@ class PlayerAppearance(BaseModel):
     yellow_cards: int = 0
     red_cards: int = 0
     goal_minutes: list[int] = Field(default_factory=list)
+    # Substitution partner from the jegyzőkönyv "changeup" link: for a substitute the player
+    # they replaced, for a starter the player who replaced them.
+    partner_mlsz_player_id: str | None = None
 
     @property
     def minutes_played(self) -> int:

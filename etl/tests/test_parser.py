@@ -107,3 +107,10 @@ def test_non_competitive_and_academy_markers():
     assert classify_competition_name("DLSZ KK-Grain I. osztály")[0] == "other"
     assert is_top_academy("BUDAPEST HONVÉD-MFA II.", "MLSZ regionális U19 alap")
     assert not is_top_academy("CSETÉNY SE", "MLSZ Országos U19 Alap Csoport")
+
+
+def test_substitution_partners(report):
+    by_id = {p.mlsz_player_id: p for p in report.home_players}
+    cibla = next(p for p in report.home_players if p.full_name == "CIBLA FLÓRIÁN")
+    assert cibla.partner_mlsz_player_id == "12126"           # came on for Dzsudzsák
+    assert by_id["12126"].partner_mlsz_player_id == cibla.mlsz_player_id

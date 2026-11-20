@@ -125,10 +125,12 @@ def _parse_player_row(row: Tag, is_starter: bool) -> PlayerAppearance | None:
     if not name_cell:
         return None
     main_link = None
+    partner_link = None
     for a in name_cell.find_all("a"):
-        if "match_players_changeup" not in (a.get("class") or []):
+        if "match_players_changeup" in (a.get("class") or []):
+            partner_link = partner_link or a
+        elif main_link is None:
             main_link = a
-            break
     if main_link is None:
         return None
     pid = _player_id(main_link.get("href"))
@@ -144,7 +146,8 @@ def _parse_player_row(row: Tag, is_starter: bool) -> PlayerAppearance | None:
 
     events = _row_events(row)
     swaps = sorted(m for k, m in events if k == "swap" and m is not None)
-    app = PlayerAppearance(mlsz_player_id=pid, full_name=name, shirt_number=shirt, is_starter=is_starter)
+    app = PlayerAppearance(mlsz_player_id=pid, full_name=name, shirt_number=shirt, is_starter=is_starter,
+                           partner_mlsz_player_id=_player_id(partner_link.get("href")) if partner_link else None)
 
     if is_starter:
         app.minute_in = 0

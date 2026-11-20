@@ -55,3 +55,17 @@ def test_geo():
     assert resolve_town("Kiskunfélegyházi HTK") == "Kiskunfélegyháza"
     assert resolve_town("KECSKEMÉTI TE II.") == "Kecskemét"
     assert 15 < haversine_km(47.0264, 19.5542, 46.9062, 19.6913) < 19
+
+
+def test_substitution_direction_moves_unknown_numbers():
+    # shirt 17 carries no information; goal output alone says "defender-ish"
+    base = infer_position([(17, 400)], 0.0, 0.8)
+    assert base[0] == "DEF"
+    # but he always replaces (or is replaced by) confident midfielders
+    with_pairs = infer_position([(17, 400)], 0.0, 0.8, sub_partners=[("MID", 0.9)] * 6)
+    assert with_pairs[0] == "MID"
+
+
+def test_substitution_direction_does_not_override_strong_shirt_evidence():
+    p, _, _ = infer_position([(4, 1800)], 0.0, 0.0, sub_partners=[("FWD", 0.9)])
+    assert p == "DEF"
