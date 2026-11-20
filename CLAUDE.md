@@ -31,6 +31,7 @@ web/                  Next.js 15 App Router, TypeScript, Tailwind v4, shadcn/ui-
   e2e/                Playwright specs (need a demo-seeded DB); playwright.config.ts starts `npm run start`
 .github/workflows/    CI: pytest · tsc/lint/build · E2E against a freshly migrated + seeded Postgres
 vercel.json           services `web` (public, /(.*)) + `etl` (internal, bound as ETL_URL) + 2 schedules
+scripts/validate_vercel_json.py   schema check for vercel.json (used by CI)
 docker-compose.yml    db + etl worker + web (self-hosting alternative)
 ```
 

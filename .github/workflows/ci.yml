@@ -25,7 +25,7 @@ jobs:
         run: |
           pip install jsonschema
           curl -fsSL https://openapi.vercel.sh/vercel.json -o "$RUNNER_TEMP/vercel.schema.json"
-          python -c "import json,sys,jsonschema; jsonschema.validate(json.load(open('vercel.json')), json.load(open(sys.argv[1]))); print('vercel.json OK')" "$RUNNER_TEMP/vercel.schema.json"
+          python scripts/validate_vercel_json.py "$RUNNER_TEMP/vercel.schema.json" vercel.json
 
   web:
     name: Web (typecheck, lint, build)
