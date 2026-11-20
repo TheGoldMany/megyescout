@@ -4,7 +4,22 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/hunscout")
+def _normalize_db_url(url: str) -> str:
+    """Accept plain postgres:// URLs (Supabase, Neon, Vercel Marketplace) and pin the psycopg 3 driver."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
+# On Vercel, environment variables are shared by every service of the project, but the web app must
+# use the least-privilege `hunscout_web` role (RLS) while the ETL writes as the schema owner.
+# So the ETL reads its own ETL_DATABASE_URL first and only falls back to DATABASE_URL (local / Docker).
+DATABASE_URL = _normalize_db_url(
+    os.getenv("ETL_DATABASE_URL")
+    or os.getenv("DATABASE_URL")
+    or "postgresql+psycopg://postgres:postgres@localhost:5432/hunscout"
+)
 
 MLSZ_BASE = os.getenv("MLSZ_BASE", "https://adatbank.mlsz.hu")
 REQUEST_DELAY_SEC = float(os.getenv("MLSZ_REQUEST_DELAY", "0.5"))

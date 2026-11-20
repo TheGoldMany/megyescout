@@ -15,4 +15,5 @@ export function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/((?!_next/|favicon.ico|api/health).*)"] };
+// /api/cron/* is called by Vercel schedules (no session cookie) and checks CRON_SECRET itself.
+export const config = { matcher: ["/((?!_next/|favicon.ico|api/health|api/cron/).*)"] };

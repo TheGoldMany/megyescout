@@ -16,7 +16,7 @@ BLSZ I–II, Magyar Kupa), built on the public match reports on adatbank.mlsz.hu
 ## Quick start (local Postgres 16)
 ```bash
 createdb hunscout
-cd etl && pip install -r requirements.txt
+cd etl && pip install -r requirements-dev.txt
 export DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/hunscout
 python cli.py seed --reset          # or: python cli.py scrape --mode backfill --profiles
 cd ../web && cp .env.example .env.local && npm install && npm run dev
@@ -30,10 +30,34 @@ docker compose up -d etl web        # http://localhost:3000
 ```
 The `etl` service scrapes on Mondays at 06:00 and Wednesdays at 21:00 (Europe/Budapest).
 
-## Vercel + Supabase
-Run the `db/migrations` against Supabase, deploy `web/` to Vercel with `DATABASE_URL` (the `hunscout_web` role
-or an equivalent non-superuser role, `PG_SSL=true`), `WORKSPACE_PASSCODE` and `AUTH_SECRET`. Run the ETL worker
-on your own server or in Docker; it does not fit serverless timeouts.
+## Vercel (one project, two services)
+`vercel.json` deploys the repo as a single Vercel project with [services](https://vercel.com/docs/services):
+
+| Service | Root | Public? | Purpose |
+| --- | --- | --- | --- |
+| `web` | `web/` | yes, `/(.*)` | Next.js scout UI; calls `etl` through the `ETL_URL` binding |
+| `etl` | `etl/` | no (internal) | FastAPI wrapper (`etl/api.py`) around the scraper + analytics |
+
+Two Vercel schedules (Monday 06:00 and Wednesday 21:00, `Europe/Budapest`) POST to `web /api/cron/sync`,
+which calls `etl` once per competition (`POST /sync`) and then `POST /analytics`.
+
+Environment variables (Vercel env vars are shared by all services, hence the separate names):
+
+| Variable | Used by | Value |
+| --- | --- | --- |
+| `DATABASE_URL` | web | `hunscout_web` role (RLS applies); add `PG_SSL=true` for Supabase |
+| `ETL_DATABASE_URL` | etl | schema-owner role (writes); a Supabase pooler URL works (prepared statements off) |
+| `CRON_SECRET` | web | random string; Vercel sends it as `Authorization: Bearer …` to schedule runs |
+| `ETL_INTERNAL_TOKEN` | web + etl | optional shared secret checked by `etl` on top of the private binding |
+| `WORKSPACE_PASSCODE`, `AUTH_SECRET` | web | staff login |
+| `ETL_URL` | web | **injected by the binding — do not set it** |
+
+Migrations are not run by the deployment: apply them with `python etl/cli.py migrate` (with `ETL_DATABASE_URL`)
+before deploying a schema change. Locally, `vercel dev` runs both services and injects `ETL_URL`; without it,
+run `cd etl && uvicorn api:app --port 8000` and set `ETL_URL=http://localhost:8000` for the web app.
+Manual sync: `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://<domain>/api/cron/sync?only=bk1`.
+
+The Docker setup (`docker-compose.yml`, long-running `cli.py schedule` worker) still works for self-hosting.
 
 ## Tests
 ```bash

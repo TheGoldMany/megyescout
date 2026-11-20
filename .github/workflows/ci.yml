@@ -17,9 +17,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.12", cache: pip, cache-dependency-path: etl/requirements.txt }
-      - run: pip install -r requirements.txt
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: etl/requirements*.txt }
+      - run: pip install -r requirements-dev.txt
       - run: python -m pytest -q
+      - name: Validate vercel.json against the published schema
+        working-directory: .
+        run: |
+          pip install jsonschema
+          curl -fsSL https://openapi.vercel.sh/vercel.json -o "$RUNNER_TEMP/vercel.schema.json"
+          python -c "import json,sys,jsonschema; jsonschema.validate(json.load(open('vercel.json')), json.load(open(sys.argv[1]))); print('vercel.json OK')" "$RUNNER_TEMP/vercel.schema.json"
 
   web:
     name: Web (typecheck, lint, build)
@@ -51,7 +57,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.12", cache: pip, cache-dependency-path: etl/requirements.txt }
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: etl/requirements*.txt }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: web/package-lock.json }
       - name: Migrate + seed demo data

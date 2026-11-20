@@ -23,7 +23,13 @@ MIGRATIONS_DIR = os.getenv(
 def engine() -> Engine:
     global _engine
     if _engine is None:
-        _engine = create_engine(DATABASE_URL, pool_pre_ping=True, future=True)
+        connect_args = {}
+        # Transaction-mode poolers (Supabase :6543, PgBouncer) cannot keep server-side prepared
+        # statements across transactions; psycopg 3 prepares after 5 executions by default.
+        if "pooler" in DATABASE_URL or ":6543/" in DATABASE_URL or os.getenv("PG_DISABLE_PREPARE") == "1":
+            connect_args["prepare_threshold"] = None
+        _engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=2, max_overflow=2,
+                                connect_args=connect_args)
     return _engine
 
 

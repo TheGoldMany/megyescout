@@ -20,19 +20,23 @@ etl/                  Python 3.12 worker (flat modules, run from inside etl/)
   analytics.py        metrics, position inference, radar, Scouting Index, archetypes, cosine similarity
   seed_demo.py        realistic demo data for the region (ids prefixed "demo-")
   geo.py              club-name -> town gazetteer + haversine
-  cli.py              migrate | seed | scrape | analytics | resolve | discover | geo | schedule
+  cli.py              migrate | seed | scrape | analytics | resolve | discover | geo | profiles | schedule
+  api.py              FastAPI entrypoint of the internal Vercel `etl` service: /health /targets /sync /analytics /profiles
   tests/              pytest, parsers tested against saved real MLSZ pages in tests/fixtures/
 web/                  Next.js 15 App Router, TypeScript, Tailwind v4, shadcn/ui-style components, Recharts
   src/lib/queries.ts  all SQL; src/lib/labels.ts all Hungarian labels; src/app/actions.ts server actions
+  src/lib/etl.ts      client for the internal etl service (reads the ETL_URL binding)
+  src/app/api/cron/sync  target of the Vercel schedules; CRON_SECRET-protected; fans out to etl /sync
   src/app/            / (explorer) · /players/[id] · /shortlist (+ /shortlist/export CSV) · /compare · /data
   e2e/                Playwright specs (need a demo-seeded DB); playwright.config.ts starts `npm run start`
 .github/workflows/    CI: pytest · tsc/lint/build · E2E against a freshly migrated + seeded Postgres
-docker-compose.yml    db + etl worker + web
+vercel.json           services `web` (public, /(.*)) + `etl` (internal, bound as ETL_URL) + 2 schedules
+docker-compose.yml    db + etl worker + web (self-hosting alternative)
 ```
 
 ## Commands
 ```bash
-cd etl && pip install -r requirements.txt
+cd etl && pip install -r requirements-dev.txt   # requirements.txt = runtime only (Vercel bundle)
 python -m pytest                       # parser/analytics tests
 python cli.py migrate
 python cli.py seed --reset             # demo data + analytics
@@ -46,6 +50,7 @@ python cli.py profiles [--limit 200]       # fetch missing/stale player profiles
 cd web && npm install && npm run dev   # needs DATABASE_URL (see web/.env.example)
 npx tsc --noEmit && npm run lint && npm run build
 npm run test:e2e                       # Playwright; DB must be seeded with demo data
+cd etl && uvicorn api:app --port 8000  # etl service locally (or `vercel dev` from the repo root)
 ```
 
 ## Key conventions & decisions
@@ -74,6 +79,10 @@ npm run test:e2e                       # Playwright; DB must be seeded with demo
 - After any data change run `analytics.run()` — it refreshes `mv_player_explorer`, which the UI reads.
   The view has one row per (player, season); use `is_latest` for "current" joins and filter explorer
   queries by season (default = newest).
+- **Vercel:** env vars are shared by all services, so the ETL reads `ETL_DATABASE_URL` (owner role) before
+  `DATABASE_URL` (which belongs to the web app's `hunscout_web` role). Never set `ETL_URL` by hand on Vercel:
+  the binding injects it at runtime (functions only, not builds or middleware). `/api/cron/*` is excluded from
+  the login middleware and checks `CRON_SECRET`. Keep each etl call to one competition (time limits).
 - Clubs without coordinates silently drop out of the distance filter: check /data, fix with `cli.py geo`.
 
 ## Design

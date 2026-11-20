@@ -1,0 +1,39 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "web": {
+      "root": "web",
+      "framework": "nextjs",
+      "bindings": [
+        { "type": "service", "service": "etl", "format": "url", "env": "ETL_URL" }
+      ]
+    },
+    "etl": {
+      "root": "etl",
+      "framework": "fastapi",
+      "entrypoint": "api:app",
+      "functions": {
+        "api.py": {
+          "maxDuration": "max",
+          "maxConcurrency": 1,
+          "excludeFiles": "{tests/**,.pytest_cache/**,Dockerfile,requirements-dev.txt}"
+        }
+      }
+    }
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": { "service": "web" } }
+  ],
+  "schedules": {
+    "mlsz-sync-monday": {
+      "schedule": "0 6 * * 1",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync"
+    },
+    "mlsz-sync-wednesday": {
+      "schedule": "0 21 * * 3",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync"
+    }
+  }
+}
