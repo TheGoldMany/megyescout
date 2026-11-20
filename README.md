@@ -38,8 +38,15 @@ The `etl` service scrapes on Mondays at 06:00 and Wednesdays at 21:00 (Europe/Bu
 | `web` | `web/` | yes, `/(.*)` | Next.js scout UI; calls `etl` through the `ETL_URL` binding |
 | `etl` | `etl/` | no (internal) | FastAPI wrapper (`etl/api.py`) around the scraper + analytics |
 
-Two Vercel schedules (Monday 06:00 and Wednesday 21:00, `Europe/Budapest`) POST to `web /api/cron/sync`,
-which calls `etl` once per competition (`POST /sync`) and then `POST /analytics`.
+**Plan: Hobby** (every function is capped at 300 s, schedule jitter is fixed at 15 min). So each
+competition has its own schedule: 22 schedules (11 competitions × Monday/Wednesday, `Europe/Budapest`),
+staggered 15 minutes apart, Monday 06:00–08:30 and Wednesday 21:00–23:30. Each one POSTs to
+`web /api/cron/sync/<key>`, which makes a single `etl POST /sync` call with a time budget (≤200 s),
+including the analytics refresh. Profiles that don't fit in the budget are reported as
+`profiles_pending` and picked up by the next run. Measured locally: NB III DK first sync with
+280 new players took 199 s. Whole-season backfills (~5 min per league) don't fit in 300 s: run them
+from the CLI (`python etl/cli.py scrape --season 2025/2026 --only bk1 --profiles`).
+`tests/test_vercel_config.py` checks the schedules (coverage, 15-minute stagger, Hobby limits).
 
 Environment variables (Vercel env vars are shared by all services, hence the separate names):
 
@@ -55,7 +62,8 @@ Environment variables (Vercel env vars are shared by all services, hence the sep
 Migrations are not run by the deployment: apply them with `python etl/cli.py migrate` (with `ETL_DATABASE_URL`)
 before deploying a schema change. Locally, `vercel dev` runs both services and injects `ETL_URL`; without it,
 run `cd etl && uvicorn api:app --port 8000` and set `ETL_URL=http://localhost:8000` for the web app.
-Manual sync: `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://<domain>/api/cron/sync?only=bk1`.
+Manual sync: `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://<domain>/api/cron/sync/bk1`
+(or `/api/cron/sync?only=bk1,pest1`, which processes leagues until the 300 s limit and reports the rest as `skipped`).
 
 The Docker setup (`docker-compose.yml`, long-running `cli.py schedule` worker) still works for self-hosting.
 

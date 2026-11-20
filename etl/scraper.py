@@ -11,6 +11,7 @@ import argparse
 import asyncio
 import logging
 import random
+import time
 from dataclasses import dataclass, field
 
 import httpx
@@ -77,6 +78,19 @@ class ScrapeStats:
     matches: int = 0
     players: set[str] = field(default_factory=set)
     errors: list[str] = field(default_factory=list)
+    profiles_loaded: int = 0
+    profiles_pending: int = 0      # stale profiles left for a later run because the time budget ran out
+    truncated: bool = False        # match scraping stopped early because the time budget ran out
+
+
+def time_left(deadline: float | None) -> float:
+    """Seconds until `deadline` (a time.monotonic() value); infinite when there is no deadline."""
+    return float("inf") if deadline is None else deadline - time.monotonic()
+
+
+# A match report costs ~1 s (rate limit + latency); stop starting new ones when less than this remains.
+MATCH_SAFETY_SEC = 5.0
+PROFILE_SAFETY_SEC = 3.0
 
 
 def league_path(season_id: int, rt: ResolvedTarget, round_no: int) -> str:
@@ -95,7 +109,7 @@ async def rounds_to_scrape(client: MlszClient, season_id: int, rt: ResolvedTarge
 
 
 async def scrape_competition(client: MlszClient, rt: ResolvedTarget, mode: str,
-                             with_profiles: bool, stats: ScrapeStats) -> None:
+                             with_profiles: bool, stats: ScrapeStats, deadline: float | None = None) -> None:
     t, season = rt.target, rt.season
     season_id = SEASON_IDS[season]
     with db.engine().begin() as conn:
@@ -107,10 +121,16 @@ async def scrape_competition(client: MlszClient, rt: ResolvedTarget, mode: str,
     rounds = await rounds_to_scrape(client, season_id, rt, mode)
     log.info("[%s %s] league %s rounds %s", t.key, season, rt.league_id, rounds)
     for rnd in rounds:
+        if time_left(deadline) < MATCH_SAFETY_SEC:
+            stats.truncated = True
+            break
         fixtures = parse_round_page(await client.get(league_path(season_id, rt, rnd)))
         for fx in fixtures:
             if not fx.has_result:
                 continue
+            if time_left(deadline) < MATCH_SAFETY_SEC:
+                stats.truncated = True
+                break
             try:
                 html = await client.get(fx.url.replace(MLSZ_BASE, ""))
                 report = parse_match_report(html, fx.url)
@@ -123,17 +143,27 @@ async def scrape_competition(client: MlszClient, rt: ResolvedTarget, mode: str,
             except Exception as exc:  # keep going: one broken report must not kill the run
                 log.exception("[%s] match %s failed", t.key, fx.mlsz_match_id)
                 stats.errors.append(f"{t.key}/{fx.mlsz_match_id}: {exc}")
+        if stats.truncated:
+            break
+    if stats.truncated:
+        stats.errors.append(f"{t.key}: time budget exhausted after {stats.matches} matches — "
+                            "run a backfill from the CLI for whole seasons")
 
-    if with_profiles:
-        await refresh_profiles(client, stats.players)
+    if with_profiles and not stats.truncated:
+        loaded, pending = await refresh_profiles(client, stats.players, deadline=deadline, with_pending=True)
+        stats.profiles_loaded += loaded
+        stats.profiles_pending += pending
 
 
 async def refresh_profiles(client: MlszClient, mlsz_ids: set[str] | None = None, stale_days: int = 30,
-                           limit: int | None = None) -> int:
+                           limit: int | None = None, deadline: float | None = None,
+                           with_pending: bool = False) -> int | tuple[int, int]:
     """Fetch /player/<id>.html (birth date, full career) for players never scraped or stale.
 
     mlsz_ids=None means every real MLSZ player in the database (demo rows are skipped).
-    Returns the number of profiles loaded successfully.
+    Stops early when `deadline` is near; the never-scraped players come first, so repeated
+    short runs (Vercel Hobby: 300 s per function) work through the backlog.
+    Returns the number of profiles loaded, or (loaded, still_pending) with with_pending=True.
     """
     from sqlalchemy import text
 
@@ -148,7 +178,12 @@ async def refresh_profiles(client: MlszClient, mlsz_ids: set[str] | None = None,
         """), {"ids": list(mlsz_ids) if mlsz_ids is not None else None, "d": stale_days,
                "lim": limit}).scalars().all()
     loaded = 0
+    attempted = 0
     for i, mid in enumerate(rows, start=1):
+        if time_left(deadline) < PROFILE_SAFETY_SEC:
+            log.info("profiles: time budget reached, %d left for the next run", len(rows) - attempted)
+            break
+        attempted += 1
         try:
             profile = parse_player_profile(await client.get(f"/player/{mid}.html"), mid)
             with db.engine().begin() as conn:
@@ -158,10 +193,14 @@ async def refresh_profiles(client: MlszClient, mlsz_ids: set[str] | None = None,
             log.exception("profile %s failed", mid)
         if i % 50 == 0:
             log.info("profiles: %d/%d", i, len(rows))
+    if with_pending:
+        return loaded, len(rows) - attempted
     return loaded
 
 
-async def run(mode: str, only: list[str] | None, season: str, with_profiles: bool) -> ScrapeStats:
+async def run(mode: str, only: list[str] | None, season: str, with_profiles: bool,
+              deadline: float | None = None) -> ScrapeStats:
+    """Scrape the selected targets. `deadline` (time.monotonic()) bounds the run for serverless callers."""
     if season != CURRENT_SEASON and mode == "incremental":
         log.info("season %s is closed: switching to backfill", season)
         mode = "backfill"
@@ -176,7 +215,10 @@ async def run(mode: str, only: list[str] | None, season: str, with_profiles: boo
                 log.warning("no league found for target %s in %s — check its patterns", key, season)
                 stats.errors.append(f"{key}: unresolved in {season}")
             for rt in targets:
-                await scrape_competition(client, rt, mode, with_profiles, stats)
+                if stats.truncated:
+                    stats.errors.append(f"{rt.target.key}: skipped, time budget exhausted")
+                    continue
+                await scrape_competition(client, rt, mode, with_profiles, stats, deadline)
     except Exception as exc:
         error = str(exc)
         raise

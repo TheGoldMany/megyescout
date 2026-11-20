@@ -70,3 +70,10 @@ def test_substitution_direction_moves_unknown_numbers():
 def test_substitution_direction_does_not_override_strong_shirt_evidence():
     p, _, _ = infer_position([(4, 1800)], 0.0, 0.0, sub_partners=[("FWD", 0.9)])
     assert p == "DEF"
+
+
+def test_time_left_helper():
+    import time
+    from scraper import time_left
+    assert time_left(None) == float("inf")
+    assert 9 < time_left(time.monotonic() + 10) <= 10

@@ -26,11 +26,12 @@ etl/                  Python 3.12 worker (flat modules, run from inside etl/)
 web/                  Next.js 15 App Router, TypeScript, Tailwind v4, shadcn/ui-style components, Recharts
   src/lib/queries.ts  all SQL; src/lib/labels.ts all Hungarian labels; src/app/actions.ts server actions
   src/lib/etl.ts      client for the internal etl service (reads the ETL_URL binding)
-  src/app/api/cron/sync  target of the Vercel schedules; CRON_SECRET-protected; fans out to etl /sync
+  src/lib/cron.ts     schedule-run logic: per-league etl calls with time budgets (Hobby: 300 s per function)
+  src/app/api/cron/sync/[target]  target of the 22 Vercel schedules (one league each); CRON_SECRET-protected
   src/app/            / (explorer) · /players/[id] · /shortlist (+ /shortlist/export CSV) · /compare · /data
   e2e/                Playwright specs (need a demo-seeded DB); playwright.config.ts starts `npm run start`
 .github/workflows/    CI: pytest · tsc/lint/build · E2E against a freshly migrated + seeded Postgres
-vercel.json           services `web` (public, /(.*)) + `etl` (internal, bound as ETL_URL) + 2 schedules
+vercel.json           services `web` (public, /(.*)) + `etl` (internal, bound as ETL_URL) + 22 schedules
 scripts/validate_vercel_json.py   schema check for vercel.json (used by CI)
 docker-compose.yml    db + etl worker + web (self-hosting alternative)
 ```
@@ -83,7 +84,12 @@ cd etl && uvicorn api:app --port 8000  # etl service locally (or `vercel dev` fr
 - **Vercel:** env vars are shared by all services, so the ETL reads `ETL_DATABASE_URL` (owner role) before
   `DATABASE_URL` (which belongs to the web app's `hunscout_web` role). Never set `ETL_URL` by hand on Vercel:
   the binding injects it at runtime (functions only, not builds or middleware). `/api/cron/*` is excluded from
-  the login middleware and checks `CRON_SECRET`. Keep each etl call to one competition (time limits).
+  the login middleware and checks `CRON_SECRET`.
+- **Vercel plan = Hobby:** every function (web and etl) is capped at 300 s and schedule jitter is fixed at
+  15 min. One schedule per competition, 15 min apart; every etl `/sync` call carries `budget_seconds`
+  (scraper stops starting requests near the deadline, leftovers are reported as `truncated` /
+  `profiles_pending`). Backfills of whole seasons run from the CLI, never through Vercel. When adding a
+  V1 target, add its two schedules (tests/test_vercel_config.py fails otherwise).
 - Clubs without coordinates silently drop out of the distance filter: check /data, fix with `cli.py geo`.
 
 ## Design

@@ -52,6 +52,9 @@ class SyncRequest(BaseModel):
     season: str = CURRENT_SEASON
     profiles: bool = True
     analytics: bool = True
+    # Scraping stops starting new requests once this budget is spent, so the call (plus analytics)
+    # stays inside the function limit: 300 s on Vercel Hobby. Unfinished work is reported back.
+    budget_seconds: float = Field(default=200, ge=10, le=3000)
 
     @field_validator("only")
     @classmethod
@@ -71,8 +74,9 @@ class SyncRequest(BaseModel):
 
 
 class ProfilesRequest(BaseModel):
-    limit: int | None = Field(default=200, ge=1, le=5000)
+    limit: int | None = Field(default=None, ge=1, le=5000)
     stale_days: int = Field(default=30, ge=0, le=3650)
+    budget_seconds: float = Field(default=200, ge=10, le=3000)
 
 
 @app.get("/health")
@@ -95,7 +99,8 @@ def targets() -> list[dict]:
 async def sync(req: SyncRequest) -> dict:
     started = time.monotonic()
     try:
-        stats = await scraper.run(req.mode, req.only, req.season, req.profiles)
+        stats = await scraper.run(req.mode, req.only, req.season, req.profiles,
+                                  deadline=started + req.budget_seconds)
     except Exception as exc:
         log.exception("sync failed")
         raise HTTPException(status_code=502, detail=f"sync failed: {exc}")
@@ -106,6 +111,9 @@ async def sync(req: SyncRequest) -> dict:
         "matches": stats.matches,
         "players": len(stats.players),
         "errors": stats.errors[:20],
+        "truncated": stats.truncated,
+        "profiles_loaded": stats.profiles_loaded,
+        "profiles_pending": stats.profiles_pending,
     }
     if req.analytics:
         result["analytics"] = analytics.run()
@@ -120,6 +128,8 @@ def run_analytics() -> dict:
 
 @app.post("/profiles", dependencies=[Depends(require_token)])
 async def profiles(req: ProfilesRequest) -> dict:
+    deadline = time.monotonic() + req.budget_seconds
     async with scraper.MlszClient() as client:
-        loaded = await scraper.refresh_profiles(client, None, req.stale_days, req.limit)
-    return {"loaded": loaded, "analytics": analytics.run() if loaded else None}
+        loaded, pending = await scraper.refresh_profiles(client, None, req.stale_days, req.limit,
+                                                         deadline=deadline, with_pending=True)
+    return {"loaded": loaded, "pending": pending, "analytics": analytics.run() if loaded else None}

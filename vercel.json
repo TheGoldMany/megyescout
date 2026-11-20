@@ -5,7 +5,12 @@
       "root": "web",
       "framework": "nextjs",
       "bindings": [
-        { "type": "service", "service": "etl", "format": "url", "env": "ETL_URL" }
+        {
+          "type": "service",
+          "service": "etl",
+          "format": "url",
+          "env": "ETL_URL"
+        }
       ]
     },
     "etl": {
@@ -22,18 +27,123 @@
     }
   },
   "rewrites": [
-    { "source": "/(.*)", "destination": { "service": "web" } }
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "web"
+      }
+    }
   ],
   "schedules": {
-    "mlsz-sync-monday": {
+    "sync-nb3-dk-mon": {
       "schedule": "0 6 * * 1",
       "timezone": "Europe/Budapest",
-      "path": "/api/cron/sync"
+      "path": "/api/cron/sync/nb3_dk"
     },
-    "mlsz-sync-wednesday": {
+    "sync-bk1-mon": {
+      "schedule": "15 6 * * 1",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/bk1"
+    },
+    "sync-pest1-mon": {
+      "schedule": "30 6 * * 1",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/pest1"
+    },
+    "sync-blsz1-mon": {
+      "schedule": "45 6 * * 1",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/blsz1"
+    },
+    "sync-jnsz1-mon": {
+      "schedule": "0 7 * * 1",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/jnsz1"
+    },
+    "sync-bk2d-mon": {
+      "schedule": "15 7 * * 1",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/bk2d"
+    },
+    "sync-bk2e-mon": {
+      "schedule": "30 7 * * 1",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/bk2e"
+    },
+    "sync-pest2e-mon": {
+      "schedule": "45 7 * * 1",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/pest2e"
+    },
+    "sync-pest2d-mon": {
+      "schedule": "0 8 * * 1",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/pest2d"
+    },
+    "sync-blsz2-mon": {
+      "schedule": "15 8 * * 1",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/blsz2"
+    },
+    "sync-mk-mon": {
+      "schedule": "30 8 * * 1",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/mk"
+    },
+    "sync-nb3-dk-wed": {
       "schedule": "0 21 * * 3",
       "timezone": "Europe/Budapest",
-      "path": "/api/cron/sync"
+      "path": "/api/cron/sync/nb3_dk"
+    },
+    "sync-bk1-wed": {
+      "schedule": "15 21 * * 3",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/bk1"
+    },
+    "sync-pest1-wed": {
+      "schedule": "30 21 * * 3",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/pest1"
+    },
+    "sync-blsz1-wed": {
+      "schedule": "45 21 * * 3",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/blsz1"
+    },
+    "sync-jnsz1-wed": {
+      "schedule": "0 22 * * 3",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/jnsz1"
+    },
+    "sync-bk2d-wed": {
+      "schedule": "15 22 * * 3",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/bk2d"
+    },
+    "sync-bk2e-wed": {
+      "schedule": "30 22 * * 3",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/bk2e"
+    },
+    "sync-pest2e-wed": {
+      "schedule": "45 22 * * 3",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/pest2e"
+    },
+    "sync-pest2d-wed": {
+      "schedule": "0 23 * * 3",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/pest2d"
+    },
+    "sync-blsz2-wed": {
+      "schedule": "15 23 * * 3",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/blsz2"
+    },
+    "sync-mk-wed": {
+      "schedule": "30 23 * * 3",
+      "timezone": "Europe/Budapest",
+      "path": "/api/cron/sync/mk"
     }
   }
 }
