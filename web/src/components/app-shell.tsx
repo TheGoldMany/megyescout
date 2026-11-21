@@ -3,9 +3,13 @@ import { ArrowLeftRight, ClipboardList, Database, LogOut, Search, Shield, Trophy
 import { getSession, authEnabled } from "@/lib/session";
 import { logoutAction } from "@/app/actions";
 import { NavLink } from "./nav-link";
+import { SetupNotice } from "./setup-notice";
+import { schemaReady } from "@/lib/queries";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const session = await getSession();
+  // a database without tables answers every page with an error: explain the missing setup instead
+  const ready = await schemaReady().catch(() => true); // connection errors keep the regular error page
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-40 border-b-4 border-[#2a3038] bg-background">
@@ -71,7 +75,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-[1600px] flex-1 px-3 py-5 sm:px-6 sm:py-7">{children}</main>
+      <main className="mx-auto w-full max-w-[1600px] flex-1 px-3 py-5 sm:px-6 sm:py-7">
+        {ready ? children : <SetupNotice />}
+      </main>
       <footer className="concrete border-t-4 border-[#2a3038]">
         <div className="mx-auto flex max-w-[1600px] flex-col gap-1 px-3 py-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <span className="flex items-center gap-1.5">

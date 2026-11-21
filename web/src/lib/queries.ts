@@ -922,3 +922,9 @@ async function getTransfersForPlayer(playerId: string): Promise<TransferRow[]> {
     [playerId],
   );
 }
+
+/** False until the migrations have created the schema (fresh database). */
+export async function schemaReady(): Promise<boolean> {
+  const r = await query<{ ok: boolean }>("SELECT to_regclass('public.mv_player_explorer') IS NOT NULL AS ok");
+  return Boolean(r[0]?.ok);
+}

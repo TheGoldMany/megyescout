@@ -6,7 +6,7 @@ name: Migrate production database
 # tracked in schema_migrations; each run applies only the new files, in one transaction.
 #
 # Requires the repository secret ETL_DATABASE_URL (schema-owner role, e.g. the Supabase
-# session/direct connection string). Without it the job is skipped with a notice.
+# session/direct connection string). Without it the job fails, so a missing secret is visible.
 
 on:
   workflow_run:
@@ -45,8 +45,9 @@ jobs:
       - name: Apply pending migrations
         run: |
           if [ -z "$ETL_DATABASE_URL" ]; then
-            echo "::notice::ETL_DATABASE_URL secret is not set; skipping production migrations."
-            exit 0
+            # fail loudly: a green "skipped" run left production without tables once
+            echo "::error::Repository secret ETL_DATABASE_URL is not set (Settings > Secrets and variables > Actions). Production migrations did NOT run."
+            exit 1
           fi
           pip install -r requirements.txt
           python cli.py migrate
