@@ -49,7 +49,7 @@ python -m pytest                       # parser/analytics tests
 python cli.py migrate
 python cli.py seed --reset             # demo data + analytics
 python cli.py scrape --mode incremental --profiles   # live MLSZ (current round + 2 previous)
-python cli.py scrape --mode backfill --only bk1,pest1
+python cli.py scrape --mode backfill --only bk1,pest1   # --skip-known resumes, --budget-minutes N caps time
 python cli.py scrape --season 2025/2026 --only bk1 --profiles   # closed seasons always backfill
 python cli.py resolve --season 2025/2026   # which MLSZ league each target maps to (add --live for current)
 python cli.py discover --federation 1      # raw league dropdown of a federation

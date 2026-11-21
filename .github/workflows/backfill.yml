@@ -34,7 +34,7 @@ concurrency:
 jobs:
   backfill:
     runs-on: ubuntu-latest
-    timeout-minutes: 350 # GitHub's hard cap is 6 h; a re-run continues where this one stopped
+    timeout-minutes: 350 # GitHub's hard cap is 6 h; a re-run continues where this one stopped (--skip-known)
     if: github.ref_name == github.event.repository.default_branch
     defaults: { run: { working-directory: etl } }
     env:
@@ -53,7 +53,9 @@ jobs:
             exit 1
           fi
           pip install -r requirements.txt
-          args=(scrape --mode backfill --season "$SEASON")
+          # stop starting requests after 320 min so analytics still runs inside the 350-min job limit;
+          # --skip-known lets the next run continue instead of re-fetching stored matches
+          args=(scrape --mode backfill --season "$SEASON" --budget-minutes 320 --skip-known)
           if [ -n "$ONLY" ]; then args+=(--only "$ONLY"); fi
           if [ "$PROFILES" = "true" ]; then args+=(--profiles); fi
           python cli.py "${args[@]}"

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import time
 import logging
 
 import analytics
@@ -107,6 +108,10 @@ def main() -> None:
     sc.add_argument("--only")
     sc.add_argument("--season", default=CURRENT_SEASON, choices=sorted(SEASON_IDS))
     sc.add_argument("--profiles", action="store_true")
+    sc.add_argument("--budget-minutes", type=float,
+                    help="stop starting new requests after this long (analytics still runs), e.g. on CI runners")
+    sc.add_argument("--skip-known", action="store_true",
+                    help="do not re-fetch matches already stored (resume an interrupted backfill)")
     sub.add_parser("analytics")
     rs = sub.add_parser("resolve", help="show which MLSZ league each V1 target maps to in a season")
     rs.add_argument("--season", default=CURRENT_SEASON, choices=sorted(SEASON_IDS))
@@ -134,8 +139,9 @@ def main() -> None:
     elif args.cmd == "scrape":
         import scraper
         db.run_migrations()
+        deadline = time.monotonic() + args.budget_minutes * 60 if args.budget_minutes else None
         stats = asyncio.run(scraper.run(args.mode, args.only.split(",") if args.only else None, args.season,
-                                        args.profiles))
+                                        args.profiles, deadline=deadline, skip_known=args.skip_known))
         print(f"matches={stats.matches} players={len(stats.players)} errors={len(stats.errors)}")
         print(analytics.run())
     elif args.cmd == "analytics":

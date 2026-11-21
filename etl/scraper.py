@@ -15,6 +15,7 @@ import time
 from dataclasses import dataclass, field
 
 import httpx
+from sqlalchemy import text
 
 import db
 from config import CURRENT_SEASON, MLSZ_BASE, REQUEST_DELAY_SEC, SEASON_IDS, USER_AGENT, comp_key
@@ -109,7 +110,8 @@ async def rounds_to_scrape(client: MlszClient, season_id: int, rt: ResolvedTarge
 
 
 async def scrape_competition(client: MlszClient, rt: ResolvedTarget, mode: str,
-                             with_profiles: bool, stats: ScrapeStats, deadline: float | None = None) -> None:
+                             with_profiles: bool, stats: ScrapeStats, deadline: float | None = None,
+                             skip_known: bool = False) -> None:
     t, season = rt.target, rt.season
     season_id = SEASON_IDS[season]
     with db.engine().begin() as conn:
@@ -118,6 +120,11 @@ async def scrape_competition(client: MlszClient, rt: ResolvedTarget, mode: str,
             short_name=rt.short_name, tier=t.tier, strength_multiplier=t.strength_multiplier,
             category=t.category, federation=t.federation,
         )
+    known: set[str] = set()
+    if skip_known:  # resuming a long backfill: matches already stored are not fetched again
+        with db.engine().begin() as conn:
+            known = {r[0] for r in conn.execute(text(
+                "SELECT mlsz_match_id FROM matches WHERE competition_id = :c"), {"c": competition_id})}
     rounds = await rounds_to_scrape(client, season_id, rt, mode)
     log.info("[%s %s] league %s rounds %s", t.key, season, rt.league_id, rounds)
     for rnd in rounds:
@@ -126,7 +133,7 @@ async def scrape_competition(client: MlszClient, rt: ResolvedTarget, mode: str,
             break
         fixtures = parse_round_page(await client.get(league_path(season_id, rt, rnd)))
         for fx in fixtures:
-            if not fx.has_result:
+            if not fx.has_result or fx.mlsz_match_id in known:
                 continue
             if time_left(deadline) < MATCH_SAFETY_SEC:
                 stats.truncated = True
@@ -199,7 +206,7 @@ async def refresh_profiles(client: MlszClient, mlsz_ids: set[str] | None = None,
 
 
 async def run(mode: str, only: list[str] | None, season: str, with_profiles: bool,
-              deadline: float | None = None) -> ScrapeStats:
+              deadline: float | None = None, skip_known: bool = False) -> ScrapeStats:
     """Scrape the selected targets. `deadline` (time.monotonic()) bounds the run for serverless callers."""
     if season != CURRENT_SEASON and mode == "incremental":
         log.info("season %s is closed: switching to backfill", season)
@@ -218,7 +225,7 @@ async def run(mode: str, only: list[str] | None, season: str, with_profiles: boo
                 if stats.truncated:
                     stats.errors.append(f"{rt.target.key}: skipped, time budget exhausted")
                     continue
-                await scrape_competition(client, rt, mode, with_profiles, stats, deadline)
+                await scrape_competition(client, rt, mode, with_profiles, stats, deadline, skip_known)
     except Exception as exc:
         error = str(exc)
         raise

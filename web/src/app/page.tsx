@@ -23,8 +23,8 @@ export default async function HomePage() {
               Ki mennyit ér az NB III-tól a megyei osztályokig
             </h1>
             <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
-              Becsült piaci értékek, keretek, tabellák és átigazolások a {h.season} szezonból, minden lejátszott
-              jegyzőkönyv alapján.
+              Becsült piaci értékek, keretek, tabellák és átigazolások{h.season ? ` a ${h.season} szezonból` : ""}, minden
+              lejátszott jegyzőkönyv alapján.
             </p>
           </div>
           {/* scoreboard */}
@@ -42,7 +42,21 @@ export default async function HomePage() {
             ))}
           </dl>
         </div>
-        <Grandstand players={h.top} seasonStart={seasonStart} />
+        {h.top.length > 0 ? (
+          <Grandstand players={h.top} seasonStart={seasonStart} />
+        ) : (
+          <div className="nb-box p-5">
+            <h2 className="font-display text-2xl font-extrabold">A lelátó még üres</h2>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              Az MLSZ-jegyzőkönyvek betöltése folyamatban van. A játékosok és az értékek a betöltés végén, az elemzés
+              lefutása után jelennek meg. Az állapotot az{" "}
+              <Link href="/data" className="nb-mark font-semibold underline decoration-2 underline-offset-4">
+                Adatállapot
+              </Link>{" "}
+              oldalon követheted.
+            </p>
+          </div>
+        )}
       </section>
 
       <div className="grid gap-10 lg:grid-cols-5">
