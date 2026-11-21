@@ -64,6 +64,10 @@ random one (Neon and other managed Postgres reject weak passwords). Either way s
 Vercel's `DATABASE_URL` with `ALTER ROLE hunscout_web PASSWORD '…'` (or in the provider's console).
 Locally, run `WEB_DB_PASSWORD=hunscout_web python cli.py migrate` to match `web/.env.example`.
 
+**First data load without a local setup:** GitHub → Actions → "Backfill production data" → Run workflow
+(choose season / leagues; it uses the same `ETL_DATABASE_URL` secret and runs the analytics at the end).
+It is manual-only on purpose: Vercel schedules stay the only timer.
+
 Locally, `vercel dev` runs both services and injects `ETL_URL`; without it,
 run `cd etl && uvicorn api:app --port 8000` and set `ETL_URL=http://localhost:8000` for the web app.
 Manual sync: `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://<domain>/api/cron/sync/bk1`

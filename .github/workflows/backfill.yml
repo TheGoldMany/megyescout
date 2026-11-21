@@ -1,0 +1,59 @@
+name: Backfill production data
+
+# Manual full-season load from adatbank.mlsz.hu into the production database (the CLI backfill,
+# run on a GitHub runner instead of a laptop). Never scheduled: Vercel schedules are the only timer
+# (CLAUDE.md), so this cannot double the regular syncs. Ends with analytics.run(), so the site
+# shows the data right after the job finishes. Upserts are idempotent: re-running is safe.
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Bajnokságok vesszővel (pl. bk1,pest1); üresen mind"
+        required: false
+        default: ""
+      season:
+        description: "Szezon"
+        required: true
+        default: "2026/2027"
+        type: choice
+        options: ["2026/2027", "2025/2026", "2024/2025", "2023/2024", "2022/2023"]
+      profiles:
+        description: "Játékosadatlapok letöltése (születési év, pályafutás)"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backfill-production
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350 # GitHub's hard cap is 6 h; a re-run continues where this one stopped
+    if: github.ref_name == github.event.repository.default_branch
+    defaults: { run: { working-directory: etl } }
+    env:
+      ETL_DATABASE_URL: ${{ secrets.ETL_DATABASE_URL }}
+      ONLY: ${{ inputs.only }}
+      SEASON: ${{ inputs.season }}
+      PROFILES: ${{ inputs.profiles }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: etl/requirements*.txt }
+      - name: Scrape MLSZ (backfill) + analytics
+        run: |
+          if [ -z "$ETL_DATABASE_URL" ]; then
+            echo "::error::Repository secret ETL_DATABASE_URL is not set."
+            exit 1
+          fi
+          pip install -r requirements.txt
+          args=(scrape --mode backfill --season "$SEASON")
+          if [ -n "$ONLY" ]; then args+=(--only "$ONLY"); fi
+          if [ "$PROFILES" = "true" ]; then args+=(--profiles); fi
+          python cli.py "${args[@]}"

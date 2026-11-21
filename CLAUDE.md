@@ -37,6 +37,7 @@ web/                  Next.js 15 App Router, TypeScript, Tailwind v4, shadcn/ui-
   e2e/                Playwright specs (need a demo-seeded DB); playwright.config.ts starts `npm run start`
 .github/workflows/    ci.yml: pytest · vercel.json schema · tsc/lint/build · E2E (fresh Postgres + seed)
                       migrate.yml: after green CI on the default branch, `cli.py migrate` (secret ETL_DATABASE_URL)
+                      backfill.yml: manual-only full-season `cli.py scrape --mode backfill` into production
 vercel.json           services `web` (public, /(.*)) + `etl` (internal, bound as ETL_URL) + 22 schedules
 scripts/validate_vercel_json.py   schema check for vercel.json (used by CI)
 ```
