@@ -41,6 +41,9 @@ def run_migrations() -> list[str]:
             "CREATE TABLE IF NOT EXISTS schema_migrations (filename TEXT PRIMARY KEY, applied_at TIMESTAMPTZ DEFAULT now())"
         ))
         done = {r[0] for r in conn.execute(text("SELECT filename FROM schema_migrations"))}
+        # password for the hunscout_web role created by migration 003 (random strong one if unset)
+        conn.execute(text("SELECT set_config('hunscout.web_password', :pw, true)"),
+                     {"pw": os.getenv("WEB_DB_PASSWORD", "")})
         for path in sorted(glob.glob(os.path.join(MIGRATIONS_DIR, "*.sql"))):
             name = os.path.basename(path)
             if name in done:

@@ -112,6 +112,8 @@ cd etl && uvicorn api:app --port 8000  # etl service locally (or `vercel dev` fr
   only from profile career rows get a coarse estimate (`source='career'`). Value deltas (▲/▼) compare only
   match-based values; never compare a match value with a career estimate. Transfers come from the main senior
   club per season; for NB I–III seasons the first team beats a "… II." reserve side in multi-club profile rows.
+- Migration 003's `hunscout_web` password comes from `WEB_DB_PASSWORD` (session GUC `hunscout.web_password`), else
+  random-strong: never hardcode a weak role password (Neon rejects it at COMMIT and the whole run rolls back).
 - Migrations run through `exec_driver_sql` with `%` doubled (psycopg placeholder escaping) — `%` in SQL is fine.
 
 ## Design ("lelátó éjjel" – a stadium at night)

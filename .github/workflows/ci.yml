@@ -64,7 +64,9 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: web/package-lock.json }
       - name: Migrate + seed demo data
         working-directory: etl
-        env: { DATABASE_URL: "postgresql+psycopg://postgres:postgres@localhost:5432/hunscout" }
+        env:
+          DATABASE_URL: "postgresql+psycopg://postgres:postgres@localhost:5432/hunscout"
+          WEB_DB_PASSWORD: hunscout_web # test-only password of the web role (matches DATABASE_URL above)
         run: |
           pip install -r requirements.txt
           python cli.py seed --reset

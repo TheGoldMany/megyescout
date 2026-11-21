@@ -57,10 +57,12 @@ Environment variables (Vercel env vars are shared by all services, hence the sep
 
 **Migrations** run automatically: `.github/workflows/migrate.yml` applies new `db/migrations/*.sql` files
 after CI passes on the default branch (the one Vercel deploys to production), using the repository secret
-`ETL_DATABASE_URL`. Without the secret the job is skipped with a notice. Vercel deploys in parallel, so for a
+`ETL_DATABASE_URL`. Without the secret the job fails, so the gap is visible. Vercel deploys in parallel, so for a
 breaking schema change run the workflow manually ("Run workflow") before merging. Migration 003 creates the
-`hunscout_web` role with the password `hunscout_web`: change it right after the first run
-(`ALTER ROLE hunscout_web PASSWORD '…'`) and use the new one in `DATABASE_URL`.
+`hunscout_web` role with the password from the optional `WEB_DB_PASSWORD` secret, otherwise with a strong
+random one (Neon and other managed Postgres reject weak passwords). Either way set the password you use in
+Vercel's `DATABASE_URL` with `ALTER ROLE hunscout_web PASSWORD '…'` (or in the provider's console).
+Locally, run `WEB_DB_PASSWORD=hunscout_web python cli.py migrate` to match `web/.env.example`.
 
 Locally, `vercel dev` runs both services and injects `ETL_URL`; without it,
 run `cd etl && uvicorn api:app --port 8000` and set `ETL_URL=http://localhost:8000` for the web app.

@@ -36,6 +36,8 @@ jobs:
     defaults: { run: { working-directory: etl } }
     env:
       ETL_DATABASE_URL: ${{ secrets.ETL_DATABASE_URL }}
+      # optional: password for the hunscout_web role (used in Vercel's DATABASE_URL); random if unset
+      WEB_DB_PASSWORD: ${{ secrets.WEB_DB_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
         with:

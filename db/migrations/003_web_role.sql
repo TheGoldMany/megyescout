@@ -1,10 +1,15 @@
 -- Least-privilege login role for the Next.js app.
 -- Superusers bypass RLS even with FORCE, so the web app must NOT connect as postgres.
--- Change the password in production:  ALTER ROLE hunscout_web PASSWORD '...';
+-- Password: the `hunscout.web_password` setting (cli.py migrate sets it from WEB_DB_PASSWORD), otherwise a
+-- strong random one (managed Postgres such as Neon rejects weak passwords at COMMIT, which rolled back the
+-- whole first production migration). Set your own later with:  ALTER ROLE hunscout_web PASSWORD '...';
 DO $$
+DECLARE
+    pw text := COALESCE(NULLIF(current_setting('hunscout.web_password', true), ''),
+                        'Hs!' || encode(gen_random_bytes(24), 'hex') || 'Q9#');
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'hunscout_web') THEN
-        CREATE ROLE hunscout_web LOGIN PASSWORD 'hunscout_web' NOSUPERUSER NOBYPASSRLS;
+        EXECUTE format('CREATE ROLE hunscout_web LOGIN PASSWORD %L NOSUPERUSER NOBYPASSRLS', pw);
     END IF;
 EXCEPTION WHEN insufficient_privilege THEN
     RAISE NOTICE 'skipping hunscout_web role creation (managed Postgres?)';
