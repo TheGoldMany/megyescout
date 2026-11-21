@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("save a private note, see it on the board, compare, export, delete", async ({ page }) => {
   // the lowest-index player is never part of the seeded notes
-  await page.goto("/?km=150&sort=index&dir=asc");
+  await page.goto("/explorer?km=150&sort=index&dir=asc");
   const href = await page.locator("table tbody tr a").first().getAttribute("href");
   expect(href).toMatch(/^\/players\//);
   await page.goto(href!);

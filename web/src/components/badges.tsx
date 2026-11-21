@@ -24,31 +24,24 @@ export function IndexBadge({ value, className }: { value: number | null | undefi
   );
 }
 
+/* Scouting Index as a square scoreboard tile: the fill rises from the bottom like a stand filling up. */
 export function IndexRing({ value, size = 88 }: { value: number | null; size?: number }) {
-  const v = value ?? 0;
-  const r = size / 2 - 7;
-  const c = 2 * Math.PI * r;
+  const v = Math.max(0, Math.min(100, value ?? 0));
   const color = v >= 60 ? "#10B981" : v >= 45 ? "#F59E0B" : "#6B7280";
   return (
-    <div className="relative" style={{ width: size, height: size }} aria-label={`Scouting Index: ${value ?? "nincs"}`}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="#1F2937" strokeWidth={7} fill="none" />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke={color}
-          strokeWidth={7}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={c * (1 - v / 100)}
-        />
-      </svg>
-      <div className="absolute inset-0 grid place-items-center text-center leading-none">
+    <div
+      className="relative shrink-0 border-2 border-[#2a3038] bg-black"
+      style={{ width: size, height: size }}
+      aria-label={`Scouting Index: ${value ?? "nincs"}`}
+    >
+      <div className="absolute inset-x-0 bottom-0 opacity-25" style={{ height: `${v}%`, background: color }} />
+      <div className="absolute inset-x-0 h-0.5" style={{ bottom: `${v}%`, background: color }} />
+      <div className="relative grid h-full place-items-center text-center leading-none">
         <div>
-          <div className="font-mono text-2xl font-bold">{value ?? "–"}</div>
-          <div className="mt-0.5 text-[9px] uppercase tracking-wider text-muted-foreground">Index</div>
+          <div className="font-display text-3xl font-bold" style={{ color }}>
+            {value ?? "–"}
+          </div>
+          <div className="mt-0.5 text-[10px] text-muted-foreground">index</div>
         </div>
       </div>
     </div>

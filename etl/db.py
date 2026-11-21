@@ -46,7 +46,9 @@ def run_migrations() -> list[str]:
             if name in done:
                 continue
             with open(path, encoding="utf-8") as fh:
-                conn.exec_driver_sql(fh.read())
+                # exec_driver_sql goes through psycopg's %-placeholder parsing; a literal "%" (even in a
+                # comment, e.g. "+600%") would raise "incomplete placeholder". Doubling it is the escape.
+                conn.exec_driver_sql(fh.read().replace("%", "%%"))
             conn.execute(text("INSERT INTO schema_migrations(filename) VALUES (:f)"), {"f": name})
             applied.append(name)
     return applied

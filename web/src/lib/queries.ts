@@ -33,6 +33,8 @@ export type ExplorerRow = {
   scouting_index: number | null;
   archetypes: string[];
   note_status: NoteStatus | null;
+  market_value_huf?: number | null;
+  prev_market_value_huf?: number | null;
 };
 
 export type Filters = {
@@ -158,7 +160,8 @@ export async function searchPlayers(
                 e.club_name, e.club_city,
                 round(haversine_km($1, $2, e.club_lat, e.club_lng)::numeric, 1) AS distance_km,
                 e.matches_played, e.starts, e.total_minutes, e.minutes_share_pct, e.goals, e.goals_per_90,
-                e.on_off_impact, e.scouting_index, e.archetypes, n.status AS note_status
+                e.on_off_impact, e.scouting_index, e.archetypes, n.status AS note_status,
+                e.market_value_huf, e.prev_market_value_huf
          FROM (SELECT *, haversine_km($1, $2, club_lat, club_lng) AS distance_km FROM mv_player_explorer) e
          LEFT JOIN scout_notes n ON n.player_id = e.player_id
          ${whereSql}
@@ -571,4 +574,351 @@ export async function getDataQuality() {
      FROM players`,
   );
   return rows[0];
+}
+
+// ---------------------------------------------------------------------------
+// Transfermarkt layer: market values, clubs, leagues, transfers
+// ---------------------------------------------------------------------------
+async function latestSeason(): Promise<string> {
+  const r = await query<{ season: string | null }>("SELECT max(season) AS season FROM mv_player_explorer");
+  return r[0]?.season ?? "";
+}
+
+export type ValuedPlayer = {
+  player_id: string;
+  full_name: string;
+  birth_year: number | null;
+  primary_position: Position | null;
+  club_id: string | null;
+  club_name: string | null;
+  competition_short: string | null;
+  tier: number;
+  scouting_index: number | null;
+  market_value_huf: number | null;
+  prev_market_value_huf: number | null;
+};
+
+export type ClubSummary = {
+  club_id: string;
+  name: string;
+  city: string | null;
+  logo_url: string | null;
+  competition_id: string | null;
+  competition_short: string | null;
+  tier: number | null;
+  squad_size: number;
+  squad_value_huf: number;
+  avg_age: number | null;
+  top_player: string | null;
+};
+
+export type TransferRow = {
+  id: string;
+  season: string;
+  player_id: string;
+  full_name: string;
+  birth_year: number | null;
+  primary_position: Position | null;
+  from_club: string;
+  to_club: string;
+  from_club_id: string | null;
+  to_club_id: string | null;
+  value_huf: number | null;
+};
+
+export type LeagueSummary = {
+  competition_id: string;
+  name: string;
+  short_name: string | null;
+  tier: number;
+  federation: string | null;
+  season: string;
+  clubs: number;
+  matches: number;
+  total_value_huf: number;
+  leader_id: string | null;
+  leader_name: string | null;
+};
+
+const CLUB_SUMMARY_SQL = `
+  WITH squad AS (
+    SELECT e.club_id, count(*)::int AS squad_size, COALESCE(sum(e.market_value_huf), 0)::bigint AS squad_value_huf,
+           round(avg($1::int - e.birth_year), 1)::float AS avg_age,
+           (array_agg(e.full_name ORDER BY e.market_value_huf DESC NULLS LAST))[1] AS top_player
+    FROM mv_player_explorer e WHERE e.is_latest AND e.season = $2
+    GROUP BY e.club_id
+  ), comp AS (
+    SELECT DISTINCT ON (x.club_id) x.club_id, c.id AS competition_id, c.short_name AS competition_short, c.tier
+    FROM (SELECT competition_id, home_club_id AS club_id FROM matches UNION ALL
+          SELECT competition_id, away_club_id FROM matches) x
+    JOIN competitions c ON c.id = x.competition_id AND c.season = $2 AND c.category = 'senior_11v11'
+    ORDER BY x.club_id, c.tier
+  )
+  SELECT cl.id AS club_id, cl.name, cl.city, cl.logo_url, comp.competition_id, comp.competition_short, comp.tier,
+         COALESCE(s.squad_size, 0) AS squad_size, COALESCE(s.squad_value_huf, 0) AS squad_value_huf, s.avg_age,
+         s.top_player
+  FROM clubs cl
+  JOIN squad s ON s.club_id = cl.id
+  LEFT JOIN comp ON comp.club_id = cl.id`;
+
+export async function getHome() {
+  const season = await latestSeason();
+  const startYear = Number(season.slice(0, 4)) || new Date().getFullYear();
+  const [top, risers, clubs, transfers, leagues] = await Promise.all([
+    query<ValuedPlayer>(
+      `SELECT player_id, full_name, birth_year, primary_position, club_id, club_name, competition_short, tier,
+              scouting_index, market_value_huf, prev_market_value_huf
+       FROM mv_player_explorer WHERE season = $1 AND market_value_huf IS NOT NULL
+       ORDER BY market_value_huf DESC, scouting_index DESC NULLS LAST LIMIT 15`,
+      [season],
+    ),
+    query<ValuedPlayer>(
+      `SELECT player_id, full_name, birth_year, primary_position, club_id, club_name, competition_short, tier,
+              scouting_index, market_value_huf, prev_market_value_huf
+       FROM mv_player_explorer
+       WHERE season = $1 AND market_value_huf IS NOT NULL AND prev_market_value_huf > 0
+       ORDER BY (market_value_huf - prev_market_value_huf) DESC LIMIT 6`,
+      [season],
+    ),
+    query<ClubSummary>(`${CLUB_SUMMARY_SQL} ORDER BY squad_value_huf DESC LIMIT 8`, [startYear, season]),
+    getTransfers({ season, limit: 8 }),
+    getLeagues(),
+  ]);
+  const totals = (
+    await query<{ players: number; clubs: number; value: number }>(
+      `SELECT count(*)::int AS players, count(DISTINCT club_id)::int AS clubs,
+              COALESCE(sum(market_value_huf), 0)::bigint AS value
+       FROM mv_player_explorer WHERE season = $1`,
+      [season],
+    )
+  )[0];
+  return { season, top, risers, clubs, transfers: transfers.rows, transferCount: transfers.total, leagues, totals };
+}
+
+export async function getLeagues(): Promise<LeagueSummary[]> {
+  const season = await latestSeason();
+  return query<LeagueSummary>(
+    `WITH g AS (
+       SELECT competition_id, home_club_id AS club_id, home_goals AS gf, away_goals AS ga FROM matches WHERE status = 'played'
+       UNION ALL
+       SELECT competition_id, away_club_id, away_goals, home_goals FROM matches WHERE status = 'played'
+     ), table_ AS (
+       SELECT competition_id, club_id,
+              sum(CASE WHEN gf > ga THEN 3 WHEN gf = ga THEN 1 ELSE 0 END) AS pts, sum(gf - ga) AS gd, sum(gf) AS gf
+       FROM g GROUP BY competition_id, club_id
+     ), leader AS (
+       SELECT DISTINCT ON (competition_id) competition_id, club_id FROM table_
+       ORDER BY competition_id, pts DESC, gd DESC, gf DESC
+     ), vals AS (
+       SELECT competition_id, COALESCE(sum(market_value_huf), 0)::bigint AS total_value_huf
+       FROM mv_player_explorer WHERE season = $1 GROUP BY competition_id
+     )
+     SELECT c.id AS competition_id, c.name, c.short_name, c.tier, c.federation, c.season,
+            (SELECT count(DISTINCT club_id)::int FROM table_ t WHERE t.competition_id = c.id) AS clubs,
+            (SELECT count(*)::int FROM matches m WHERE m.competition_id = c.id AND m.status = 'played') AS matches,
+            COALESCE(v.total_value_huf, 0) AS total_value_huf,
+            l.club_id AS leader_id, cl.name AS leader_name
+     FROM competitions c
+     LEFT JOIN vals v ON v.competition_id = c.id
+     LEFT JOIN leader l ON l.competition_id = c.id
+     LEFT JOIN clubs cl ON cl.id = l.club_id
+     WHERE c.season = $1 AND EXISTS (SELECT 1 FROM matches m WHERE m.competition_id = c.id)
+     ORDER BY c.tier, c.name`,
+    [season],
+  );
+}
+
+export type StandingRow = {
+  club_id: string;
+  name: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  gf: number;
+  ga: number;
+  gd: number;
+  pts: number;
+  form: string[];
+  squad_value_huf: number;
+};
+
+export async function getStandings(competitionId: string): Promise<StandingRow[]> {
+  if (!/^[0-9a-f-]{36}$/i.test(competitionId)) return [];
+  return query<StandingRow>(
+    `WITH g AS (
+       SELECT home_club_id AS club_id, home_goals AS gf, away_goals AS ga, match_date FROM matches
+       WHERE competition_id = $1 AND status = 'played'
+       UNION ALL
+       SELECT away_club_id, away_goals, home_goals, match_date FROM matches
+       WHERE competition_id = $1 AND status = 'played'
+     ), c AS (SELECT season FROM competitions WHERE id = $1)
+     SELECT g.club_id, cl.name, count(*)::int AS played,
+            sum((gf > ga)::int)::int AS won, sum((gf = ga)::int)::int AS drawn, sum((gf < ga)::int)::int AS lost,
+            sum(gf)::int AS gf, sum(ga)::int AS ga, sum(gf - ga)::int AS gd,
+            sum(CASE WHEN gf > ga THEN 3 WHEN gf = ga THEN 1 ELSE 0 END)::int AS pts,
+            (array_agg(CASE WHEN gf > ga THEN 'GY' WHEN gf = ga THEN 'D' ELSE 'V' END ORDER BY match_date DESC))[1:5] AS form,
+            COALESCE((SELECT sum(e.market_value_huf) FROM mv_player_explorer e
+                      WHERE e.club_id = g.club_id AND e.season = (SELECT season FROM c)), 0)::bigint AS squad_value_huf
+     FROM g JOIN clubs cl ON cl.id = g.club_id
+     GROUP BY g.club_id, cl.name
+     ORDER BY pts DESC, gd DESC, gf DESC, cl.name`,
+    [competitionId],
+  );
+}
+
+export async function getLeague(competitionId: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(competitionId)) return null;
+  const comp = (
+    await query<{ id: string; name: string; short_name: string | null; tier: number; season: string; federation: string | null; category: string }>(
+      "SELECT id, name, short_name, tier, season, federation, category FROM competitions WHERE id = $1",
+      [competitionId],
+    )
+  )[0];
+  if (!comp) return null;
+  const [standings, valuable, scorers] = await Promise.all([
+    getStandings(competitionId),
+    query<ValuedPlayer>(
+      `SELECT player_id, full_name, birth_year, primary_position, club_id, club_name, competition_short, tier,
+              scouting_index, market_value_huf, prev_market_value_huf
+       FROM mv_player_explorer WHERE competition_id = $1 AND market_value_huf IS NOT NULL
+       ORDER BY market_value_huf DESC LIMIT 10`,
+      [competitionId],
+    ),
+    query<{ player_id: string; full_name: string; club_id: string | null; club_name: string | null; goals: number; matches_played: number; total_minutes: number }>(
+      `SELECT m.player_id, p.full_name, m.club_id, cl.name AS club_name, m.goals, m.matches_played, m.total_minutes
+       FROM player_season_metrics m JOIN players p ON p.id = m.player_id LEFT JOIN clubs cl ON cl.id = m.club_id
+       WHERE m.competition_id = $1 AND m.goals > 0
+       ORDER BY m.goals DESC, m.total_minutes ASC LIMIT 10`,
+      [competitionId],
+    ),
+  ]);
+  return { comp, standings, valuable, scorers };
+}
+
+export type SquadPlayer = ValuedPlayer & {
+  secondary_position: Position | null;
+  matches_played: number;
+  starts: number;
+  total_minutes: number;
+  goals: number;
+  archetypes: string[];
+  has_academy_pedigree: boolean;
+};
+
+export async function getClub(clubId: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(clubId)) return null;
+  const season = await latestSeason();
+  const startYear = Number(season.slice(0, 4)) || new Date().getFullYear();
+  const club = (
+    await query<ClubSummary & { latitude: number | null; longitude: number | null; county: string | null }>(
+      `SELECT s.*, cl.latitude, cl.longitude, cl.county FROM (${CLUB_SUMMARY_SQL}) s
+       JOIN clubs cl ON cl.id = s.club_id WHERE s.club_id = $3`,
+      [startYear, season, clubId],
+    )
+  )[0];
+  if (!club) {
+    const bare = (await query<{ club_id: string; name: string }>("SELECT id AS club_id, name FROM clubs WHERE id = $1", [clubId]))[0];
+    if (!bare) return null;
+  }
+  const [squad, results, transfersIn, transfersOut, venue] = await Promise.all([
+    query<SquadPlayer>(
+      `SELECT player_id, full_name, birth_year, primary_position, secondary_position, club_id, club_name,
+              competition_short, tier, scouting_index, market_value_huf, prev_market_value_huf, matches_played, starts,
+              total_minutes, goals, archetypes, has_academy_pedigree
+       FROM mv_player_explorer WHERE club_id = $1 AND is_latest AND season = $2
+       ORDER BY CASE primary_position WHEN 'GK' THEN 1 WHEN 'DEF' THEN 2 WHEN 'MID' THEN 3 WHEN 'FWD' THEN 4 ELSE 5 END,
+                market_value_huf DESC NULLS LAST`,
+      [clubId, season],
+    ),
+    query<{ match_id: string; match_date: string | null; round_number: number | null; is_home: boolean; opponent_id: string; opponent: string; goals_for: number; goals_against: number; competition_short: string | null }>(
+      `SELECT m.id AS match_id, m.match_date::text, m.round_number, m.home_club_id = $1 AS is_home,
+              CASE WHEN m.home_club_id = $1 THEN m.away_club_id ELSE m.home_club_id END AS opponent_id,
+              o.name AS opponent,
+              CASE WHEN m.home_club_id = $1 THEN m.home_goals ELSE m.away_goals END AS goals_for,
+              CASE WHEN m.home_club_id = $1 THEN m.away_goals ELSE m.home_goals END AS goals_against,
+              c.short_name AS competition_short
+       FROM matches m
+       JOIN clubs o ON o.id = CASE WHEN m.home_club_id = $1 THEN m.away_club_id ELSE m.home_club_id END
+       JOIN competitions c ON c.id = m.competition_id
+       WHERE (m.home_club_id = $1 OR m.away_club_id = $1) AND m.status = 'played'
+       ORDER BY m.match_date DESC NULLS LAST LIMIT 10`,
+      [clubId],
+    ),
+    getTransfers({ toClubId: clubId, limit: 12 }),
+    getTransfers({ fromClubId: clubId, limit: 12 }),
+    query<{ venue: string }>(
+      `SELECT venue FROM matches WHERE home_club_id = $1 AND venue IS NOT NULL
+       GROUP BY venue ORDER BY count(*) DESC LIMIT 1`,
+      [clubId],
+    ),
+  ]);
+  const name = club?.name ?? (await query<{ name: string }>("SELECT name FROM clubs WHERE id = $1", [clubId]))[0]?.name;
+  return {
+    season,
+    club: club ?? null,
+    name: name ?? "",
+    squad,
+    results,
+    transfersIn: transfersIn.rows,
+    transfersOut: transfersOut.rows,
+    venue: venue[0]?.venue ?? null,
+    standings: club?.competition_id ? await getStandings(club.competition_id) : [],
+  };
+}
+
+export async function getTransfers(
+  f: { season?: string; toClubId?: string; fromClubId?: string; tier?: number; limit?: number; offset?: number } = {},
+): Promise<{ rows: TransferRow[]; total: number }> {
+  const where: string[] = [];
+  const params: unknown[] = [];
+  const p = (v: unknown) => {
+    params.push(v);
+    return `$${params.length}`;
+  };
+  if (f.season) where.push(`t.season = ${p(f.season)}`);
+  if (f.toClubId) where.push(`t.to_club_id = ${p(f.toClubId)}`);
+  if (f.fromClubId) where.push(`t.from_club_id = ${p(f.fromClubId)}`);
+  if (f.tier) where.push(`EXISTS (SELECT 1 FROM mv_player_explorer e WHERE e.player_id = t.player_id AND e.season = t.season AND e.tier = ${p(f.tier)})`);
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  const total = (await query<{ n: number }>(`SELECT count(*)::int AS n FROM transfers t ${whereSql}`, params))[0]?.n ?? 0;
+  const rows = await query<TransferRow>(
+    `SELECT t.id, t.season, t.player_id, p.full_name, p.birth_year, p.primary_position, t.from_club, t.to_club,
+            t.from_club_id, t.to_club_id, t.value_huf
+     FROM transfers t JOIN players p ON p.id = t.player_id
+     ${whereSql}
+     ORDER BY t.season DESC, t.value_huf DESC NULLS LAST, p.full_name
+     LIMIT ${Math.min(200, f.limit ?? 50)} OFFSET ${Math.max(0, f.offset ?? 0)}`,
+    params,
+  );
+  return { rows, total };
+}
+
+export async function getTransferSeasons(): Promise<string[]> {
+  const rows = await query<{ season: string }>("SELECT DISTINCT season FROM transfers ORDER BY season DESC");
+  return rows.map((r) => r.season);
+}
+
+export type ValuePoint = { season: string; value_huf: number; source: "match" | "career"; club_name: string | null };
+
+export async function getValueHistory(playerId: string): Promise<ValuePoint[]> {
+  if (!/^[0-9a-f-]{36}$/i.test(playerId)) return [];
+  return query<ValuePoint>(
+    "SELECT season, value_huf, source, club_name FROM player_market_values WHERE player_id = $1 ORDER BY season",
+    [playerId],
+  );
+}
+
+export async function getPlayerTransfers(playerId: string) {
+  return (await getTransfersForPlayer(playerId));
+}
+
+async function getTransfersForPlayer(playerId: string): Promise<TransferRow[]> {
+  if (!/^[0-9a-f-]{36}$/i.test(playerId)) return [];
+  return query<TransferRow>(
+    `SELECT t.id, t.season, t.player_id, p.full_name, p.birth_year, p.primary_position, t.from_club, t.to_club,
+            t.from_club_id, t.to_club_id, t.value_huf
+     FROM transfers t JOIN players p ON p.id = t.player_id WHERE t.player_id = $1 ORDER BY t.season DESC`,
+    [playerId],
+  );
 }

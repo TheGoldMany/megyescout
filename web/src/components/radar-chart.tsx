@@ -45,10 +45,10 @@ export function PlayerRadar({ series, height = 320 }: { series: RadarSeries[]; h
             />
           ))}
           <Tooltip
-            contentStyle={{ background: "#111827", border: "1px solid #273244", borderRadius: 8, fontSize: 12 }}
+            contentStyle={{ background: "#000", border: "1px solid #2a3038", borderRadius: 0, fontSize: 12 }}
             labelFormatter={(_, p) => (p?.[0]?.payload?.full as string) ?? ""}
           />
-          <Legend wrapperStyle={{ fontSize: 11, color: "#9CA3AF" }} iconType="circle" iconSize={8} />
+          <Legend wrapperStyle={{ fontSize: 11, color: "#9CA3AF" }} iconType="square" iconSize={8} />
         </RadarChart>
       </ResponsiveContainer>
     </div>

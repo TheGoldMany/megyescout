@@ -77,3 +77,27 @@ def test_time_left_helper():
     from scraper import time_left
     assert time_left(None) == float("inf")
     assert 9 < time_left(time.monotonic() + 10) <= 10
+
+
+def test_market_values_scale_with_tier_index_and_age():
+    from market import career_value_huf, market_value_huf, round_value
+    assert round_value(1_234_567) == 1_200_000 and round_value(512_345) == 500_000
+    megye1_avg = market_value_huf(4, 55, 1500, 24)
+    assert 1_500_000 <= megye1_avg <= 2_000_000
+    assert market_value_huf(3, 55, 1500, 24) > megye1_avg > market_value_huf(5, 55, 1500, 24)
+    assert market_value_huf(4, 75, 1500, 20) > megye1_avg
+    assert market_value_huf(4, 55, 100, 24) < megye1_avg          # small sample
+    assert market_value_huf(4, 55, 1500, 34) < megye1_avg          # veteran
+    assert career_value_huf(4, 25, 21) > career_value_huf(4, 5, 31)
+
+
+def test_first_club_skips_futsal_teams():
+    from market import _first_club
+    assert _first_club("DIRNER-SILAND FUTSAL CLUB, TISZAKÉCSKEI LC II.") == "TISZAKÉCSKEI LC II."
+    assert _first_club("KECSKEMÉTI TE II., TISZAKÉCSKEI LC") == "KECSKEMÉTI TE II."
+
+
+def test_first_club_prefers_first_team_in_high_tiers():
+    from market import _first_club
+    assert _first_club("VASAS FC II., KOLORCITY KAZINCBARCIKA SC", tier=1) == "KOLORCITY KAZINCBARCIKA SC"
+    assert _first_club("VASAS FC II., KOLORCITY KAZINCBARCIKA SC", tier=5) == "VASAS FC II."

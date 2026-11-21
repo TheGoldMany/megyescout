@@ -3,7 +3,11 @@
 Regional scouting platform for Hungarian lower leagues (NB III Dél-Kelet, Bács-Kiskun/Pest/JNSZ Megye I–II,
 BLSZ I–II, Magyar Kupa), built on the public match reports on adatbank.mlsz.hu.
 
-- **Scout Explorer** (`/`): KPIs, filters for position, birth year (youth-rule toggle), tier, minutes, role,
+- **Home** (`/`): the most valuable players seated in a grandstand, most valuable squads, latest transfers, leagues
+- **Clubs** (`/clubs/[id]`): squad by position with estimated values, line-up on a pitch, standings, results,
+  arrivals and departures; **leagues** (`/leagues`, `/leagues/[id]`): standings, top scorers, most valuable players;
+  **transfers** (`/transfers`): club changes between seasons by season and division
+- **Scout Explorer** (`/explorer`): KPIs, filters for position, birth year (youth-rule toggle), tier, minutes, role,
   and distance from Lajosmizse (Haversine), plus a sortable table (cards on mobile)
 - **Player profile** (`/players/[id]`): Scouting Index ring, 6-axis radar against the league positional average,
   multi-league career timeline (senior, youth, futsal), recent matches, similar players, private club-vault box

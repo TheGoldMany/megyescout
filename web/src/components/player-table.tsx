@@ -5,6 +5,7 @@ import { PAGE_SIZE } from "@/lib/queries";
 import { clubCase, cn, fmtNum, titleCase } from "@/lib/utils";
 import { ArchetypeBadges, IndexBadge, OnOff, PositionBadge, StatusBadge } from "./badges";
 import { Tip } from "./ui/tooltip";
+import { ValueTag } from "./stadium";
 import type { RawParams } from "@/lib/filters";
 
 function href(sp: RawParams, patch: Record<string, string | undefined>) {
@@ -14,7 +15,7 @@ function href(sp: RawParams, patch: Record<string, string | undefined>) {
     if (v === undefined) next.delete(k);
     else next.set(k, v);
   }
-  return `/?${next.toString()}`;
+  return `/explorer?${next.toString()}`;
 }
 
 function SortHead({
@@ -93,6 +94,7 @@ export function PlayerTable({
               <SortHead label="G/90" k="g90" f={f} sp={sp} />
               <SortHead label="On/Off" k="onoff" f={f} sp={sp} hint="Csapat pont/meccs átlaga vele (≥60 perc) mínusz nélküle" />
               <th className="px-2 py-2 text-left font-medium">Szerepkör</th>
+              <SortHead label="Érték" k="value" f={f} sp={sp} hint="Becsült piaci érték (Megyescout-becslés)" />
               <SortHead label="Index" k="index" f={f} sp={sp} className="pr-4" hint="Scouting Index 0–100: liga-erősség 35%, életkor 25%, teljesítmény 25%, pedigré 15%" />
             </tr>
           </thead>
@@ -150,6 +152,9 @@ export function PlayerTable({
                 <td className="px-2">
                   <ArchetypeBadges tags={r.archetypes} max={2} />
                 </td>
+                <td className="whitespace-nowrap px-2">
+                  <ValueTag value={r.market_value_huf} prev={r.prev_market_value_huf} size="sm" />
+                </td>
                 <td className="py-2 pl-2 pr-4">
                   <IndexBadge value={r.scouting_index} />
                 </td>
@@ -182,6 +187,7 @@ export function PlayerTable({
                   <OnOff value={r.on_off_impact} />
                 </div>
               </div>
+              <ValueTag value={r.market_value_huf} size="sm" />
               {r.note_status && <StatusBadge status={r.note_status} />}
             </Link>
           </li>

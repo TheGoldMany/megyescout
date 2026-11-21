@@ -66,3 +66,36 @@ def test_database_url_normalisation():
 
 def test_budget_bounds_are_enforced(client):
     assert client.post("/sync", json={"only": ["bk1"], "budget_seconds": 1}).status_code == 422
+
+
+def test_migrations_tolerate_percent_signs(tmp_path, monkeypatch):
+    """A '%' in a migration (comment or LIKE pattern) must not break psycopg placeholder parsing."""
+    import db
+    executed = []
+
+    class FakeConn:
+        def execute(self, stmt, params=None):
+            class R:
+                def __iter__(self_inner):
+                    return iter([])
+            return R()
+
+        def exec_driver_sql(self, sql):
+            executed.append(sql)
+
+    class FakeBegin:
+        def __enter__(self):
+            return FakeConn()
+
+        def __exit__(self, *a):
+            return False
+
+    class FakeEngine:
+        def begin(self):
+            return FakeBegin()
+
+    (tmp_path / "001_x.sql").write_text("-- +600% jump\nSELECT 'a%b';", encoding="utf-8")
+    monkeypatch.setattr(db, "MIGRATIONS_DIR", str(tmp_path))
+    monkeypatch.setattr(db, "engine", lambda: FakeEngine())
+    assert db.run_migrations() == ["001_x.sql"]
+    assert executed == ["-- +600%% jump\nSELECT 'a%%b';"]

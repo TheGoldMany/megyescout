@@ -9,6 +9,8 @@ import {
   getRecentMatches,
   getSimilar,
   getPlayerSeasons,
+  getPlayerTransfers,
+  getValueHistory,
   type CareerRow,
 } from "@/lib/queries";
 import { getSession, sessionOrLogin } from "@/lib/session";
@@ -16,9 +18,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ArchetypeBadges, IndexBadge, IndexRing, OnOff, PositionBadge } from "@/components/badges";
 import { PlayerRadar } from "@/components/radar-chart";
 import { ScoutBox } from "@/components/scout-box";
+import { ClubLink, TransferList, ValueTag } from "@/components/stadium";
+import { ValueChart } from "@/components/value-chart";
 import { Tip } from "@/components/ui/tooltip";
 import { CATEGORY_LABEL, POSITION_LABEL, RADAR_AXES, TIER_LABEL } from "@/lib/labels";
-import { clubCase, cn, fmtNum, titleCase } from "@/lib/utils";
+import { clubCase, cn, fmtNum, fmtValue, titleCase } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -63,13 +67,16 @@ export default async function PlayerPage({
   const p = await getPlayer(session.workspaceId, id, season);
   if (!p) notFound();
 
-  const [career, similarNow, note, recent, avg] = await Promise.all([
+  const [career, similarNow, note, recent, avg, valueHistory, transfers] = await Promise.all([
     getCareer(id),
     getSimilar(session.workspaceId, id, p.season ?? null),
     getNote(session.workspaceId, id),
     getRecentMatches(id),
     getPositionalAverage(p.competition_id, p.primary_position),
+    getValueHistory(id),
+    getPlayerTransfers(id),
   ]);
+  const peak = valueHistory.reduce((m, v) => Math.max(m, v.value_huf), 0);
   // Early in a season most players are below the 450′ similarity threshold:
   // fall back to the most recent earlier season that has statistical twins.
   let similar = similarNow;
@@ -91,7 +98,7 @@ export default async function PlayerPage({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link href="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+        <Link href="/explorer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-3.5 w-3.5" /> Vissza a keresőhöz
         </Link>
         {seasons.length > 1 && (
@@ -113,11 +120,11 @@ export default async function PlayerPage({
       </div>
 
       {/* hero */}
-      <Card className="overflow-hidden">
-        <div className="flex flex-col gap-4 bg-gradient-to-r from-emerald-500/10 via-transparent to-transparent p-4 sm:flex-row sm:items-center sm:p-5">
+      <Card className="concrete overflow-hidden border-2 border-[#2a3038]">
+        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
           <IndexRing value={p.scouting_index ?? null} />
           <div className="min-w-0 flex-1">
-            <h1 className="flex flex-wrap items-center gap-2 text-xl font-semibold tracking-tight sm:text-2xl">
+            <h1 className="flex flex-wrap items-center gap-2 font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl">
               {titleCase(p.full_name)}
               {p.has_academy_pedigree && (
                 <Tip content="Akadémiai előélet (kiemelt utánpótlás vagy NB I/NB II akadémia)">
@@ -143,7 +150,7 @@ export default async function PlayerPage({
               </span>
               <span className="flex items-center gap-1">
                 <MapPin className="h-3.5 w-3.5" />
-                {p.club_name ? clubCase(p.club_name) : "–"}
+                <ClubLink id={p.club_id} name={p.club_name} className="text-foreground" />
                 {p.distance_km !== null && p.distance_km !== undefined ? ` · ${fmtNum(p.distance_km, 0)} km` : ""}
               </span>
               {p.competition_name && <span>{p.competition_name}</span>}
@@ -152,6 +159,12 @@ export default async function PlayerPage({
               <ArchetypeBadges tags={p.archetypes} max={6} />
             </div>
           </div>
+          <div className="flex flex-col items-start gap-2 sm:items-end">
+            <div className="text-right">
+              <div className="text-[11px] text-muted-foreground">Becsült piaci érték</div>
+              <ValueTag value={p.market_value_huf} prev={p.prev_market_value_huf} size="lg" />
+              {peak > 0 && <div className="mt-0.5 text-[11px] text-muted-foreground">Csúcs: {fmtValue(peak)}</div>}
+            </div>
           {isMlsz && (
             <a
               href={`https://adatbank.mlsz.hu/player/${p.mlsz_player_id}.html`}
@@ -162,6 +175,7 @@ export default async function PlayerPage({
               MLSZ adatlap <ExternalLink className="h-3 w-3" />
             </a>
           )}
+          </div>
         </div>
         {/* stat strip */}
         <div className="grid grid-cols-3 divide-x border-t sm:grid-cols-6">
@@ -245,6 +259,28 @@ export default async function PlayerPage({
           </CardHeader>
           <CardContent>
             <ScoutBox playerId={id} note={note} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* market value + transfers */}
+      <div className="grid gap-4 lg:grid-cols-5">
+        <Card className="lg:col-span-3">
+          <CardHeader>
+            <CardTitle>Piaci érték alakulása</CardTitle>
+            <CardDescription>Teli négyzet: jegyzőkönyvekből számolt érték; üres: becslés a karrieradatokból</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ValueChart points={valueHistory} />
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Átigazolások</CardTitle>
+            <CardDescription>Klubváltások szezonok között</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TransferList rows={transfers} showSeason />
           </CardContent>
         </Card>
       </div>

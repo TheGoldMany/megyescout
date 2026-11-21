@@ -12,7 +12,7 @@ async function expectRows(page: Page, selector: string, ok: (cells: string[]) =>
 
 test.describe("Régiós Scout Kereső", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/explorer");
     await expect(page.getByRole("heading", { name: "Régiós Scout Kereső" })).toBeVisible();
   });
 

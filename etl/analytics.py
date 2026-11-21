@@ -17,6 +17,7 @@ import pandas as pd
 from sqlalchemy import text
 
 import db
+import market
 
 log = logging.getLogger("hunscout.analytics")
 
@@ -392,6 +393,8 @@ def compute(apps: pd.DataFrame, matches: pd.DataFrame, players: pd.DataFrame) ->
         r["scouting_index"] = idx
         r["birth_year"] = int(r["birth_year"]) if pd.notna(r.get("birth_year")) else None
         r["archetypes"] = assign_archetypes(r, season) if r["category"] == SENIOR else []
+        r["market_value_huf"] = (market.market_value_huf(int(r["tier"]), idx, int(r["total_minutes"]), age)
+                                 if r["category"] == SENIOR else None)
         rows.append(r)
     return pd.DataFrame(rows), positions
 
@@ -435,10 +438,11 @@ def persist(conn, metrics: pd.DataFrame, positions: pd.DataFrame, sims: list[tup
         conn.execute(text("""
             INSERT INTO player_season_metrics (player_id, season, competition_id, club_id, matches_played, starts, sub_ins,
                 total_minutes, minutes_share_pct, goals, goals_per_90, yellows_per_90, red_cards, clean_sheets,
-                team_ppg_with_player, team_ppg_without_player, on_off_impact, scouting_index, archetypes, radar_vector)
+                team_ppg_with_player, team_ppg_without_player, on_off_impact, scouting_index, archetypes, radar_vector,
+                market_value_huf)
             VALUES (:player_id, :season, :competition_id, :club_id, :matches_played, :starts, :sub_ins, :total_minutes,
                 :minutes_share_pct, :goals, :goals_per_90, :yellows_per_90, :red_cards, :clean_sheets,
-                :ppg_with, :ppg_without, :on_off, :scouting_index, :archetypes, CAST(:radar AS JSONB))
+                :ppg_with, :ppg_without, :on_off, :scouting_index, :archetypes, CAST(:radar AS JSONB), :value)
         """), [dict(player_id=r["player_id"], season=r["season"], competition_id=r["competition_id"],
                     club_id=r["club_id"], matches_played=int(r["matches_played"]), starts=int(r["starts"]),
                     sub_ins=int(r["sub_ins"]), total_minutes=int(r["total_minutes"]),
@@ -447,7 +451,8 @@ def persist(conn, metrics: pd.DataFrame, positions: pd.DataFrame, sims: list[tup
                     red_cards=int(r["red_cards"]), clean_sheets=int(r["clean_sheets"]),
                     ppg_with=_nz(r["team_ppg_with_player"]), ppg_without=_nz(r["team_ppg_without_player"]),
                     on_off=_nz(r["on_off_impact"]), scouting_index=_nz(r["scouting_index"]),
-                    archetypes=r["archetypes"], radar=json.dumps(r["radar_vector"]))
+                    archetypes=r["archetypes"], radar=json.dumps(r["radar_vector"]),
+                    value=_nz(r["market_value_huf"]))
                for r in metrics.to_dict("records")])
     conn.execute(text("DELETE FROM player_similarities"))
     if sims:
@@ -455,7 +460,6 @@ def persist(conn, metrics: pd.DataFrame, positions: pd.DataFrame, sims: list[tup
             INSERT INTO player_similarities (player_id, similar_player_id, season, similarity, rank)
             VALUES (:a, :b, :s, :sim, :rank)
         """), [dict(a=a, b=b, s=s, sim=sim, rank=rank) for a, b, s, sim, rank in sims])
-    conn.execute(text("REFRESH MATERIALIZED VIEW mv_player_explorer"))
 
 
 def run() -> dict:
@@ -464,7 +468,10 @@ def run() -> dict:
         metrics, positions = compute(apps, matches, players)
         sims = similarities(metrics)
         persist(conn, metrics, positions, sims)
-    summary = {"metric_rows": len(metrics), "players_positioned": len(positions), "similarity_pairs": len(sims)}
+        market_summary = market.build(conn, metrics)
+        conn.execute(text("REFRESH MATERIALIZED VIEW mv_player_explorer"))
+    summary = {"metric_rows": len(metrics), "players_positioned": len(positions), "similarity_pairs": len(sims),
+               **market_summary}
     log.info("analytics done: %s", summary)
     return summary
 

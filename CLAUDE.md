@@ -9,7 +9,8 @@ Dark-mode scouting platform ("Hungarian Transfermarkt + Wyscout Lite") for NB II
 ## Repository layout
 ```
 db/migrations/        001_init.sql (schema), 002 (workspaces, RLS), 003 (hunscout_web role),
-                      004 (substitution pairs), 005 (mv_player_explorer: one row per player+season)
+                      004 (substitution pairs), 005 (mv_player_explorer: one row per player+season),
+                      006 (market values, transfers), 007 (value delta only between match-based values)
 etl/                  Python 3.12 worker (flat modules, run from inside etl/)
   config.py           DB URL, rate limit, V1 competition targets (verified 2026/27 ids + name patterns)
   resolve.py          maps targets to MLSZ league ids for any season by matching the league dropdown
@@ -18,6 +19,7 @@ etl/                  Python 3.12 worker (flat modules, run from inside etl/)
   db.py               migrations runner + idempotent upserts (dedup on mlsz_player_id)
   scraper.py          async httpx client (0.5 s rate limit, retries/backoff), --mode incremental|backfill
   analytics.py        metrics, position inference, radar, Scouting Index, archetypes, cosine similarity
+  market.py           estimated market values (HUF) per season + transfers (club change between seasons)
   seed_demo.py        realistic demo data for the region (ids prefixed "demo-")
   geo.py              club-name -> town gazetteer + haversine
   cli.py              migrate | seed | scrape | analytics | resolve | discover | geo | profiles (local tooling)
@@ -28,7 +30,10 @@ web/                  Next.js 15 App Router, TypeScript, Tailwind v4, shadcn/ui-
   src/lib/etl.ts      client for the internal etl service (reads the ETL_URL binding)
   src/lib/cron.ts     schedule-run logic: per-league etl calls with time budgets (Hobby: 300 s per function)
   src/app/api/cron/sync/[target]  target of the 22 Vercel schedules (one league each); CRON_SECRET-protected
-  src/app/            / (explorer) · /players/[id] · /shortlist (+ /shortlist/export CSV) · /compare · /data
+  src/app/            / (home) · /explorer · /players/[id] · /clubs/[id] · /leagues(/[id]) · /transfers ·
+                      /shortlist (+ /shortlist/export CSV) · /compare · /data
+  src/components/stadium.tsx  design-system pieces: SectorHeading, ValueTag, ClubCrest, Grandstand, Pitch,
+                      StandingsTable, TransferList
   e2e/                Playwright specs (need a demo-seeded DB); playwright.config.ts starts `npm run start`
 .github/workflows/    ci.yml: pytest · vercel.json schema · tsc/lint/build · E2E (fresh Postgres + seed)
                       migrate.yml: after green CI on the default branch, `cli.py migrate` (secret ETL_DATABASE_URL)
@@ -102,6 +107,20 @@ cd etl && uvicorn api:app --port 8000  # etl service locally (or `vercel dev` fr
   never from PRs. New schema changes go in a new numbered file; never edit an applied migration.
 - Clubs without coordinates silently drop out of the distance filter: check /data, fix with `cli.py geo`.
 
-## Design
-Background `#090D16`, cards `#111827`, emerald `#10B981`, amber `#F59E0B`. Dense tables on desktop, card list +
-collapsible filters on phones (sideline use).
+- **Market values** (`market.py`) are estimates, always labelled as such: tier base (NB III 6 M, Megye I 1.8 M,
+  Megye II 0.7 M Ft) × exp((Scouting Index − 55)/18), capped at 6× base, cut for <270′ and age 33+. Seasons known
+  only from profile career rows get a coarse estimate (`source='career'`). Value deltas (▲/▼) compare only
+  match-based values; never compare a match value with a career estimate. Transfers come from the main senior
+  club per season; for NB I–III seasons the first team beats a "… II." reserve side in multi-club profile rows.
+- Migrations run through `exec_driver_sql` with `%` doubled (psycopg placeholder escaping) — `%` in SQL is fine.
+
+## Design ("lelátó éjjel" – a stadium at night)
+- **No rounded corners or edges anywhere** (client rule): global `border-radius: 0 !important`, square line caps on
+  icons/charts, square checkboxes, no circles in drawings (the index is a square tile, the pitch has no centre
+  circle). The `market.spec.ts` E2E test fails on any non-zero radius.
+- Palette: night `#090D16`, concrete `#9AA0A6`/`#2A3038`, pitch `#10B981`, floodlight/scoreboard `#F59E0B`,
+  seat red `#D9483B`, chalk `#EDEDE6`. Type: Barlow (body) + Barlow Condensed (headings, all numbers).
+- Motifs: truss roof + floodlight heads in the header (`.truss`, `.lamps`), board-marked concrete (`.concrete`),
+  sector boards (letter = in-page anchor, title in sentence case, no all-caps labels), scoreboard values
+  (amber digits on black), the home grandstand (top values in three tiers) as the single bold element.
+  Dense tables on desktop, card list + collapsible filters on phones (sideline use).

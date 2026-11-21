@@ -8,4 +8,5 @@ export const SORT_COLUMNS = {
   g90: "goals_per_90",
   onoff: "on_off_impact",
   tier: "tier",
+  value: "market_value_huf",
 } as const;

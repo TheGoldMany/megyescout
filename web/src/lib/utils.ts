@@ -60,3 +60,20 @@ export function clubCase(name: string): string {
     .map((w) => (w.length <= 3 || ROMAN.test(w) ? w : w[0] + w.slice(1).toLocaleLowerCase("hu-HU")))
     .join("");
 }
+
+/** Market value like a value table: "1,2 M Ft", "850 E Ft". */
+export function fmtValue(v: number | null | undefined): string {
+  if (v === null || v === undefined) return "–";
+  if (v >= 1_000_000) {
+    const m = v / 1_000_000;
+    return `${new Intl.NumberFormat("hu-HU", { maximumFractionDigits: m >= 10 ? 1 : 2 }).format(m)} M Ft`;
+  }
+  return `${Math.round(v / 1000)} E Ft`;
+}
+
+/** Signed change in percent, e.g. "+38%". */
+export function fmtDeltaPct(now: number | null | undefined, before: number | null | undefined): string | null {
+  if (!now || !before) return null;
+  const pct = Math.round(((now - before) / before) * 100);
+  return pct === 0 ? "±0%" : `${pct > 0 ? "+" : "−"}${Math.abs(pct)}%`;
+}
