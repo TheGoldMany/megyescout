@@ -36,7 +36,7 @@ export function ScoutBox({ playerId, note }: { playerId: string; note: ScoutNote
               onClick={() => setStatus(s)}
               className={cn(
                 "rounded-md border px-2 py-1 text-xs transition",
-                status === s ? "border-primary/60 bg-primary/15 text-emerald-200" : "border-input text-muted-foreground hover:bg-secondary",
+                status === s ? "border-primary/60 bg-primary/15 text-emerald-800" : "border-input text-muted-foreground hover:bg-secondary",
               )}
             >
               {STATUS_LABEL[s]}
@@ -58,7 +58,7 @@ export function ScoutBox({ playerId, note }: { playerId: string; note: ScoutNote
               onClick={() => setRating(rating === n ? 0 : n)}
               className="p-0.5"
             >
-              <Star className={cn("h-6 w-6", n <= rating ? "fill-accent text-accent" : "text-zinc-600")} />
+              <Star className={cn("h-6 w-6", n <= rating ? "fill-accent text-black" : "text-black/40")} />
             </button>
           ))}
         </div>
@@ -109,7 +109,7 @@ export function ScoutBox({ playerId, note }: { playerId: string; note: ScoutNote
         )}
       </div>
       {state && (
-        <p className={cn("flex items-center gap-1 text-xs", state.ok ? "text-emerald-400" : "text-rose-400")}>
+        <p className={cn("flex items-center gap-1 text-xs", state.ok ? "text-emerald-800" : "text-rose-700")}>
           {state.ok && <Check className="h-3.5 w-3.5" />} {state.message}
         </p>
       )}

@@ -13,7 +13,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         A klub-széf jegyzetei csak a Lajosmizsei VLC stábja számára láthatók.
       </p>
       {problems.length > 0 && (
-        <div className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+        <div className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-800">
           <p className="font-medium">A belépés még nincs beállítva.</p>
           <p className="mt-1">
             Hiányzó környezeti változó a Vercel-projektben: {problems.join(", ")}. Beállítás után telepítsd újra az

@@ -37,7 +37,7 @@ test("club page: squad by position, pitch, standings with the club highlighted",
   await expect(page).toHaveURL(/\/clubs\//);
   await expect(page.getByRole("heading", { name: "Keret" })).toBeVisible();
   await expect(page.getByText("Keretérték")).toBeVisible();
-  await expect(page.locator("tr.bg-accent\\/10")).toHaveCount(1);
+  await expect(page.locator('tr[aria-current="true"]')).toHaveCount(1);
   await expectNoRoundedCorners(page);
 });
 

@@ -117,13 +117,17 @@ cd etl && uvicorn api:app --port 8000  # etl service locally (or `vercel dev` fr
   random-strong: never hardcode a weak role password (Neon rejects it at COMMIT and the whole run rolls back).
 - Migrations run through `exec_driver_sql` with `%` doubled (psycopg placeholder escaping) — `%` in SQL is fine.
 
-## Design ("lelátó éjjel" – a stadium at night)
+## Design (neo-brutalist stadium)
 - **No rounded corners or edges anywhere** (client rule): global `border-radius: 0 !important`, square line caps on
   icons/charts, square checkboxes, no circles in drawings (the index is a square tile, the pitch has no centre
   circle). The `market.spec.ts` E2E test fails on any non-zero radius.
-- Palette: night `#090D16`, concrete `#9AA0A6`/`#2A3038`, pitch `#10B981`, floodlight/scoreboard `#F59E0B`,
-  seat red `#D9483B`, chalk `#EDEDE6`. Type: Barlow (body) + Barlow Condensed (headings, all numbers).
-- Motifs: truss roof + floodlight heads in the header (`.truss`, `.lamps`), board-marked concrete (`.concrete`),
-  sector boards (letter = in-page anchor, title in sentence case, no all-caps labels), scoreboard values
-  (amber digits on black), the home grandstand (top values in three tiers) as the single bold element.
+- **Neo-brutalism** (client request): light raw-concrete ground, everything outlined in pure black ink
+  (`.border` is 2px, boards/buttons 3px), solid un-blurred offset shadows (`.nb-box`, `--shadow-hard`), flat fills,
+  pressable elements lift on hover and slam down on press (`.nb-press`), link hover = yellow marker (`.nb-mark`,
+  never yellow text on concrete). Status text uses the dark 700/800 shades for contrast.
+- Palette: concrete `#D6D8D1`, ink `#000000`, board `#FFFFFF`, pitch `#00A862`, floodlight/scoreboard `#FFC414`,
+  seat red `#FF4B3E`. Type: Barlow (body) + Barlow Condensed (headings, all numbers, extrabold).
+- Motifs: black/yellow truss roof + square floodlight heads in the header (`.truss`, `.lamps`), sector boards
+  (letter = in-page anchor, title in sentence case, no all-caps labels), scoreboard values (yellow digits on black),
+  the red-seated home grandstand (top values in three tiers) as the single bold element, black footer.
   Dense tables on desktop, card list + collapsible filters on phones (sideline use).

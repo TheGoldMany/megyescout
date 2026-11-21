@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-// Gates of the stand: the active one is lit from below by a floodlight-amber bar.
+// Gates of the stand: painted gate boards; the open gate is the black one.
 export function NavLink({ href, icon, children }: { href: string; icon: React.ReactNode; children: React.ReactNode }) {
   const path = usePathname();
   const active = href === "/" ? path === "/" : path.startsWith(href);
@@ -12,8 +12,8 @@ export function NavLink({ href, icon, children }: { href: string; icon: React.Re
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "relative inline-flex h-14 items-center gap-1.5 whitespace-nowrap px-3 text-muted-foreground transition-colors hover:text-foreground",
-        active && "text-foreground after:absolute after:inset-x-2 after:bottom-0 after:h-1 after:bg-accent",
+        "inline-flex h-10 items-center gap-1.5 whitespace-nowrap border-[3px] border-black bg-white px-3 font-bold text-black hover:bg-accent",
+        active && "bg-black text-white hover:bg-black",
       )}
     >
       {icon}

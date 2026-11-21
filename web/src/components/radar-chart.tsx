@@ -3,7 +3,7 @@
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { RADAR_AXES, type RadarVector } from "@/lib/labels";
 
-const COLORS = ["#10B981", "#F59E0B", "#38BDF8", "#F472B6"];
+const COLORS = ["#00A862", "#000000", "#FF4B3E", "#2F5BFF"];
 
 export type RadarSeries = { name: string; values: RadarVector | null; dashed?: boolean };
 
@@ -28,16 +28,16 @@ export function PlayerRadar({ series, height = 320 }: { series: RadarSeries[]; h
     <div style={{ height }} className="w-full">
       <ResponsiveContainer>
         <RadarChart data={data} outerRadius="72%" margin={{ top: 8, right: 24, bottom: 8, left: 24 }}>
-          <PolarGrid stroke="#273244" />
-          <PolarAngleAxis dataKey="axis" tick={{ fill: "#9CA3AF", fontSize: 11 }} />
+          <PolarGrid stroke="rgba(0,0,0,0.3)" />
+          <PolarAngleAxis dataKey="axis" tick={{ fill: "#000", fontSize: 11 }} />
           <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} tickCount={5} />
           {series.map((s, i) => (
             <Radar
               key={s.name}
               name={s.name}
               dataKey={`s${i}`}
-              stroke={s.dashed ? "#6B7280" : COLORS[i % COLORS.length]}
-              fill={s.dashed ? "#6B7280" : COLORS[i % COLORS.length]}
+              stroke={s.dashed ? "#464B52" : COLORS[i % COLORS.length]}
+              fill={s.dashed ? "#464B52" : COLORS[i % COLORS.length]}
               fillOpacity={s.dashed ? 0.05 : i === 0 ? 0.3 : 0.12}
               strokeDasharray={s.dashed ? "4 4" : undefined}
               strokeWidth={s.dashed ? 1.5 : 2}
@@ -45,10 +45,10 @@ export function PlayerRadar({ series, height = 320 }: { series: RadarSeries[]; h
             />
           ))}
           <Tooltip
-            contentStyle={{ background: "#000", border: "1px solid #2a3038", borderRadius: 0, fontSize: 12 }}
+            contentStyle={{ background: "#fff", border: "3px solid #000", borderRadius: 0, boxShadow: "4px 4px 0 #000", fontSize: 12, color: "#000" }}
             labelFormatter={(_, p) => (p?.[0]?.payload?.full as string) ?? ""}
           />
-          <Legend wrapperStyle={{ fontSize: 11, color: "#9CA3AF" }} iconType="square" iconSize={8} />
+          <Legend wrapperStyle={{ fontSize: 11, color: "#000" }} iconType="square" iconSize={8} />
         </RadarChart>
       </ResponsiveContainer>
     </div>

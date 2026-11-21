@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   description: "Becsült piaci értékek, keretek, tabellák és átigazolások az NB III-tól a megyei osztályokig.",
 };
 
-export const viewport: Viewport = { themeColor: "#090D16", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { themeColor: "#D6D8D1", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

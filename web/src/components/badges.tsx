@@ -4,9 +4,9 @@ import { Tip } from "./ui/tooltip";
 
 export function indexTone(v: number | null | undefined) {
   if (v === null || v === undefined) return "text-muted-foreground bg-secondary ring-border";
-  if (v >= 75) return "text-emerald-200 bg-emerald-500/20 ring-emerald-400/50";
-  if (v >= 60) return "text-emerald-300 bg-emerald-500/10 ring-emerald-500/30";
-  if (v >= 45) return "text-amber-300 bg-amber-500/10 ring-amber-500/30";
+  if (v >= 75) return "text-emerald-800 bg-emerald-500/20 ring-emerald-400/50";
+  if (v >= 60) return "text-emerald-800 bg-emerald-500/10 ring-emerald-500/30";
+  if (v >= 45) return "text-amber-800 bg-amber-500/10 ring-amber-500/30";
   return "text-zinc-400 bg-zinc-500/10 ring-zinc-500/30";
 }
 
@@ -27,10 +27,10 @@ export function IndexBadge({ value, className }: { value: number | null | undefi
 /* Scouting Index as a square scoreboard tile: the fill rises from the bottom like a stand filling up. */
 export function IndexRing({ value, size = 88 }: { value: number | null; size?: number }) {
   const v = Math.max(0, Math.min(100, value ?? 0));
-  const color = v >= 60 ? "#10B981" : v >= 45 ? "#F59E0B" : "#6B7280";
+  const color = v >= 60 ? "#00D47C" : v >= 45 ? "#FFC414" : "#9AA0A6";
   return (
     <div
-      className="relative shrink-0 border-2 border-[#2a3038] bg-black"
+      className="relative shrink-0 border-[3px] border-black bg-black shadow-[4px_4px_0_var(--color-accent)]"
       style={{ width: size, height: size }}
       aria-label={`Scouting Index: ${value ?? "nincs"}`}
     >
@@ -41,7 +41,7 @@ export function IndexRing({ value, size = 88 }: { value: number | null; size?: n
           <div className="font-display text-3xl font-bold" style={{ color }}>
             {value ?? "–"}
           </div>
-          <div className="mt-0.5 text-[10px] text-muted-foreground">index</div>
+          <div className="mt-0.5 text-[10px] text-white/70">index</div>
         </div>
       </div>
     </div>
@@ -92,7 +92,7 @@ export function StatusBadge({ status }: { status: NoteStatus }) {
 
 export function OnOff({ value }: { value: number | null | undefined }) {
   if (value === null || value === undefined) return <span className="text-muted-foreground">–</span>;
-  const tone = value > 0.15 ? "text-emerald-400" : value < -0.15 ? "text-rose-400" : "text-muted-foreground";
+  const tone = value > 0.15 ? "text-emerald-800" : value < -0.15 ? "text-rose-700" : "text-muted-foreground";
   const s = value.toFixed(2).replace(".", ",");
   return (
     <span className={cn("font-mono text-xs", tone)}>
@@ -104,9 +104,9 @@ export function OnOff({ value }: { value: number | null | undefined }) {
 
 export function Stars({ value }: { value: number | null }) {
   return (
-    <span className="font-mono text-xs tracking-tight text-accent" aria-label={`${value ?? 0} csillag`}>
+    <span className="font-mono text-sm tracking-tight text-black" aria-label={`${value ?? 0} csillag`}>
       {"★".repeat(value ?? 0)}
-      <span className="text-zinc-700">{"★".repeat(5 - (value ?? 0))}</span>
+      <span className="text-black/25">{"★".repeat(5 - (value ?? 0))}</span>
     </span>
   );
 }

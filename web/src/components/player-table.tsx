@@ -82,7 +82,7 @@ export function PlayerTable({
       {/* desktop / tablet table */}
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
-          <thead className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          <thead className="text-[11px] font-semibold text-muted-foreground">
             <tr className="border-b">
               <SortHead label="Név" k="name" f={f} sp={sp} className="pl-4" />
               <SortHead label="Kor" k="age" f={f} sp={sp} />
@@ -106,7 +106,7 @@ export function PlayerTable({
                     <span className="group-hover:text-primary">{titleCase(r.full_name)}</span>
                     {r.has_academy_pedigree && (
                       <Tip content="Akadémiai előélet">
-                        <GraduationCap className="h-3.5 w-3.5 text-sky-400" />
+                        <GraduationCap className="h-3.5 w-3.5 text-sky-800" />
                       </Tip>
                     )}
                   </Link>
@@ -173,7 +173,7 @@ export function PlayerTable({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 font-medium">
                   <span className="truncate">{titleCase(r.full_name)}</span>
-                  {r.has_academy_pedigree && <GraduationCap className="h-3.5 w-3.5 shrink-0 text-sky-400" />}
+                  {r.has_academy_pedigree && <GraduationCap className="h-3.5 w-3.5 shrink-0 text-sky-800" />}
                 </div>
                 <div className="truncate text-xs text-muted-foreground">
                   {r.birth_year ? `${seasonStart - r.birth_year} év · ` : ""}

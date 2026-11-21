@@ -49,7 +49,7 @@ export default async function ExplorerPage({ searchParams }: { searchParams: Pro
         />
       </Suspense>
       {isPast && (
-        <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800">
           <History className="h-4 w-4 shrink-0" />
           A(z) {season} szezon adatait látod. Az életkor és a klub az akkori állapotot mutatja.
         </div>

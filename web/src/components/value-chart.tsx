@@ -10,7 +10,7 @@ function SquareDot(props: { cx?: number; cy?: number; payload?: Point }) {
   const { cx, cy, payload } = props;
   if (cx === undefined || cy === undefined) return null;
   const career = payload?.source === "career";
-  return <rect x={cx - 4} y={cy - 4} width={8} height={8} fill={career ? "#000" : "#F59E0B"} stroke="#F59E0B" strokeWidth={2} />;
+  return <rect x={cx - 4} y={cy - 4} width={8} height={8} fill={career ? "#FFFFFF" : "#FFC414"} stroke="#000" strokeWidth={2.5} />;
 }
 
 export function ValueChart({ points }: { points: Point[] }) {
@@ -19,24 +19,24 @@ export function ValueChart({ points }: { points: Point[] }) {
     <div className="h-56 w-full">
       <ResponsiveContainer>
         <LineChart data={points} margin={{ top: 10, right: 16, bottom: 0, left: 8 }}>
-          <CartesianGrid stroke="#2a3038" vertical={false} />
-          <XAxis dataKey="season" tick={{ fill: "#9AA0A6", fontSize: 11 }} axisLine={{ stroke: "#3b4450" }} tickLine={false} />
+          <CartesianGrid stroke="rgba(0,0,0,0.18)" vertical={false} />
+          <XAxis dataKey="season" tick={{ fill: "#000", fontSize: 11 }} axisLine={{ stroke: "#000", strokeWidth: 2 }} tickLine={false} />
           <YAxis
             tickFormatter={(v: number) => fmtValue(v).replace(" Ft", "")}
-            tick={{ fill: "#9AA0A6", fontSize: 11 }}
+            tick={{ fill: "#000", fontSize: 11 }}
             axisLine={false}
             tickLine={false}
             width={56}
           />
           <Tooltip
-            contentStyle={{ background: "#000", border: "1px solid #2a3038", borderRadius: 0, fontSize: 12 }}
+            contentStyle={{ background: "#fff", border: "3px solid #000", borderRadius: 0, boxShadow: "4px 4px 0 #000", fontSize: 12, color: "#000" }}
             formatter={(v) => [fmtValue(Number(v)), "Becsült érték"]}
             labelFormatter={(label, p) => {
               const pt = p?.[0]?.payload as Point | undefined;
               return `${String(label)}${pt?.club_name ? ` · ${pt.club_name}` : ""}${pt?.source === "career" ? " (karrieradatokból)" : ""}`;
             }}
           />
-          <Line type="stepAfter" dataKey="value_huf" stroke="#F59E0B" strokeWidth={2} dot={<SquareDot />} activeDot={<SquareDot />} isAnimationActive={false} />
+          <Line type="stepAfter" dataKey="value_huf" stroke="#000" strokeWidth={3} dot={<SquareDot />} activeDot={<SquareDot />} isAnimationActive={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>

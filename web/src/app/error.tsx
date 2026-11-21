@@ -13,7 +13,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
 
   return (
     <div className="mx-auto mt-20 max-w-md rounded-lg border border-rose-500/30 bg-card p-6 text-center">
-      <AlertTriangle className="mx-auto h-8 w-8 text-rose-400" />
+      <AlertTriangle className="mx-auto h-8 w-8 text-rose-700" />
       <h1 className="mt-3 text-lg font-semibold">Valami hiba történt</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         Az oldal adatait nem sikerült betölteni. Leggyakrabban az adatbázis nem érhető el, vagy egy új telepítésnél

@@ -20,7 +20,7 @@ export default async function LeaguesPage() {
           <SectorHeading sector={String.fromCharCode(65 + i)} title={TIER_LABEL[tier] ?? `${tier}. szint`} />
           <div className="overflow-x-auto border border-border">
             <table className="w-full text-sm">
-              <thead className="bg-black text-left text-xs text-muted-foreground">
+              <thead className="bg-black text-left text-xs text-white">
                 <tr>
                   <th className="px-3 py-2 font-medium">Bajnokság</th>
                   <th className="px-2 py-2 font-medium">Szövetség</th>
@@ -36,7 +36,7 @@ export default async function LeaguesPage() {
                   .map((l) => (
                     <tr key={l.competition_id} className="border-t border-border hover:bg-secondary/50">
                       <td className="px-3 py-2">
-                        <Link href={`/leagues/${l.competition_id}`} className="font-display text-lg font-semibold hover:text-accent">
+                        <Link href={`/leagues/${l.competition_id}`} className="font-display text-lg font-semibold hover:bg-accent hover:text-black">
                           {l.name}
                         </Link>
                       </td>
@@ -45,7 +45,7 @@ export default async function LeaguesPage() {
                       <td className="px-2 text-right font-display text-base">{l.matches}</td>
                       <td className="px-2">
                         {l.leader_id ? (
-                          <Link href={`/clubs/${l.leader_id}`} className="hover:text-accent">
+                          <Link href={`/clubs/${l.leader_id}`} className="hover:bg-accent hover:text-black">
                             {clubCase(l.leader_name ?? "")}
                           </Link>
                         ) : (
@@ -53,7 +53,7 @@ export default async function LeaguesPage() {
                         )}
                       </td>
                       <td className="px-3 text-right">
-                        <span className="bg-black px-1.5 font-display text-base font-semibold text-accent">{fmtValue(l.total_value_huf)}</span>
+                        <span className="border-2 border-black bg-black px-1.5 font-display text-base font-bold text-accent">{fmtValue(l.total_value_huf)}</span>
                       </td>
                     </tr>
                   ))}

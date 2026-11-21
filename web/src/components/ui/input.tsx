@@ -7,7 +7,7 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
       type={type}
       ref={ref}
       className={cn(
-        "flex h-9 w-full rounded-md border border-input bg-background/60 px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
+        "flex h-9 w-full border-[3px] border-black bg-white px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:bg-[#fff6cc] disabled:opacity-50",
         className,
       )}
       {...props}
@@ -21,7 +21,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTML
     <textarea
       ref={ref}
       className={cn(
-        "flex min-h-[90px] w-full rounded-md border border-input bg-background/60 px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "flex min-h-[90px] w-full border-[3px] border-black bg-white px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:bg-[#fff6cc]",
         className,
       )}
       {...props}
@@ -35,7 +35,7 @@ export const NativeSelect = React.forwardRef<HTMLSelectElement, React.SelectHTML
     <select
       ref={ref}
       className={cn(
-        "flex h-9 w-full rounded-md border border-input bg-background/60 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "flex h-9 w-full border-[3px] border-black bg-white px-2 text-sm focus-visible:bg-[#fff6cc]",
         className,
       )}
       {...props}
@@ -47,5 +47,5 @@ export const NativeSelect = React.forwardRef<HTMLSelectElement, React.SelectHTML
 NativeSelect.displayName = "NativeSelect";
 
 export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
-  return <label className={cn("text-[11px] font-medium uppercase tracking-wide text-muted-foreground", className)} {...props} />;
+  return <label className={cn("text-xs font-bold text-black", className)} {...props} />;
 }

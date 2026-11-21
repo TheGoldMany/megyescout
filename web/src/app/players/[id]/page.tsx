@@ -120,7 +120,7 @@ export default async function PlayerPage({
       </div>
 
       {/* hero */}
-      <Card className="concrete overflow-hidden border-2 border-[#2a3038]">
+      <Card className="overflow-hidden shadow-[7px_7px_0_#000]">
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
           <IndexRing value={p.scouting_index ?? null} />
           <div className="min-w-0 flex-1">
@@ -128,7 +128,7 @@ export default async function PlayerPage({
               {titleCase(p.full_name)}
               {p.has_academy_pedigree && (
                 <Tip content="Akadémiai előélet (kiemelt utánpótlás vagy NB I/NB II akadémia)">
-                  <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[11px] font-medium text-sky-300 ring-1 ring-sky-500/30">
+                  <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[11px] font-medium text-sky-800 ring-1 ring-sky-500/30">
                     <GraduationCap className="h-3.5 w-3.5" /> Akadémia
                   </span>
                 </Tip>
@@ -188,7 +188,7 @@ export default async function PlayerPage({
             ["On/Off", null, "pont/meccs különbség"],
           ].map(([label, value, sub]) => (
             <div key={label} className="px-3 py-2.5 sm:px-4">
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+              <div className="text-[10px] font-semibold text-muted-foreground">{label}</div>
               <div className="font-mono text-lg font-semibold">
                 {label === "On/Off" ? <OnOff value={p.on_off_impact} /> : value}
               </div>
@@ -234,7 +234,7 @@ export default async function PlayerPage({
                       <span className="font-mono">
                         {v ?? "–"}
                         {ref !== null && v !== null && (
-                          <span className={cn("ml-1 text-[10px]", v >= ref ? "text-emerald-400" : "text-rose-400")}>
+                          <span className={cn("ml-1 text-[10px]", v >= ref ? "text-emerald-800" : "text-rose-700")}>
                             {v >= ref ? "+" : ""}
                             {v - ref}
                           </span>
@@ -254,7 +254,7 @@ export default async function PlayerPage({
         {/* private scout box */}
         <Card className="border-amber-500/20">
           <CardHeader>
-            <CardTitle className="text-amber-300">Klub-széf · Lajosmizsei VLC</CardTitle>
+            <CardTitle className="text-amber-800">Klub-széf · Lajosmizsei VLC</CardTitle>
             <CardDescription>Privát megfigyelési jegyzet</CardDescription>
           </CardHeader>
           <CardContent>
@@ -292,7 +292,7 @@ export default async function PlayerPage({
           <CardDescription>
             Koszinusz-hasonlóság a 6 tengelyes szezon-vektor alapján, azonos poszt-csoporton belül
             {similarSeason && similarSeason !== p.season && (
-              <span className="ml-1 text-amber-300">
+              <span className="ml-1 text-amber-800">
                 · a(z) {similarSeason} szezon alapján (az idei játékperc még kevés)
               </span>
             )}
@@ -329,7 +329,7 @@ export default async function PlayerPage({
                     <div className="mt-2">
                       <div className="flex justify-between text-[11px]">
                         <span className="text-muted-foreground">Hasonlóság</span>
-                        <span className="font-mono text-emerald-300">{pct}%</span>
+                        <span className="font-mono text-emerald-800">{pct}%</span>
                       </div>
                       <div className="mt-1 h-1 overflow-hidden rounded-full bg-secondary">
                         <div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} />
@@ -403,7 +403,7 @@ export default async function PlayerPage({
                         <span
                           className={cn(
                             "mr-1 inline-block w-5 rounded text-center text-[10px]",
-                            res === "GY" ? "bg-emerald-500/20 text-emerald-300" : res === "D" ? "bg-amber-500/20 text-amber-300" : "bg-rose-500/20 text-rose-300",
+                            res === "GY" ? "bg-emerald-500/20 text-emerald-800" : res === "D" ? "bg-amber-500/20 text-amber-800" : "bg-rose-500/20 text-rose-700",
                           )}
                         >
                           {res}

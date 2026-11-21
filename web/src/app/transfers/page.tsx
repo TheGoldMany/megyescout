@@ -43,13 +43,13 @@ export default async function TransfersPage({
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="text-muted-foreground">Szezon</span>
         {seasons.map((s) => (
-          <Link key={s} href={href({ season: s, page: undefined })} className={cn("border px-2.5 py-1 font-display text-base", s === season ? "border-accent bg-accent text-accent-foreground" : "border-border hover:border-accent")}>
+          <Link key={s} href={href({ season: s, page: undefined })} className={cn("border-[3px] border-black px-2.5 py-1 font-display text-base font-bold", s === season ? "bg-black text-white" : "bg-white hover:bg-accent")}>
             {s}
           </Link>
         ))}
         <span className="ml-3 text-muted-foreground">Érkezési osztály</span>
         {[undefined, 3, 4, 5].map((t) => (
-          <Link key={t ?? "all"} href={href({ tier: t ? String(t) : undefined, page: undefined })} className={cn("border px-2.5 py-1", t === tier ? "border-accent bg-accent text-accent-foreground" : "border-border hover:border-accent")}>
+          <Link key={t ?? "all"} href={href({ tier: t ? String(t) : undefined, page: undefined })} className={cn("border-[3px] border-black px-2.5 py-1 font-semibold", t === tier ? "bg-black text-white" : "bg-white hover:bg-accent")}>
             {t ? TIER_LABEL[t] : "Mind"}
           </Link>
         ))}

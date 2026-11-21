@@ -5,9 +5,9 @@ import { clubCase, cn, titleCase } from "@/lib/utils";
 import { PositionBadge, StatusBadge } from "./badges";
 
 function resultTone(gf: number, ga: number) {
-  if (gf > ga) return "bg-emerald-500/20 text-emerald-300";
-  if (gf === ga) return "bg-amber-500/20 text-amber-300";
-  return "bg-rose-500/20 text-rose-300";
+  if (gf > ga) return "bg-emerald-500/20 text-emerald-800";
+  if (gf === ga) return "bg-amber-500/20 text-amber-800";
+  return "bg-rose-500/20 text-rose-700";
 }
 
 function fmtDate(d: string | null) {
@@ -63,16 +63,16 @@ export function RecentForm({ rows }: { rows: FormRow[] }) {
                   <td className="whitespace-nowrap py-2 pl-2 pr-3 text-right sm:pr-4">
                     {r.played ? (
                       <span className="inline-flex items-center gap-1.5 font-mono">
-                        <span className={cn(r.is_starter ? "text-foreground" : "text-sky-300")}>
+                        <span className={cn(r.is_starter ? "text-foreground" : "text-sky-800")}>
                           {r.is_starter ? "Kezdő" : `Csere ${r.minute_in}′`}
                         </span>
                         <span className="text-muted-foreground">{r.minutes_played}′</span>
-                        {(r.goals ?? 0) > 0 && <span className="text-emerald-300">{r.goals} gól</span>}
+                        {(r.goals ?? 0) > 0 && <span className="text-emerald-800">{r.goals} gól</span>}
                         {(r.yellow_cards ?? 0) > 0 && <span className="inline-block h-3 w-2 rounded-[1px] bg-yellow-400" />}
                         {(r.red_cards ?? 0) > 0 && <span className="inline-block h-3 w-2 rounded-[1px] bg-red-500" />}
                       </span>
                     ) : (
-                      <span className="rounded bg-rose-500/10 px-1.5 py-0.5 text-rose-300 ring-1 ring-inset ring-rose-500/30">
+                      <span className="rounded bg-rose-500/10 px-1.5 py-0.5 text-rose-700 ring-1 ring-inset ring-rose-500/30">
                         Nem lépett pályára
                       </span>
                     )}

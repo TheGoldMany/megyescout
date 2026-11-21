@@ -25,8 +25,8 @@ export default async function LeaguePage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="space-y-9">
-      <section className="concrete border-2 border-[#2a3038] p-4 sm:p-5">
-        <Link href="/leagues" className="text-xs text-muted-foreground hover:text-foreground">
+      <section className="nb-box border-[3px] shadow-[7px_7px_0_#000] p-4 sm:p-5">
+        <Link href="/leagues" className="nb-mark text-xs font-semibold text-muted-foreground">
           Bajnokságok
         </Link>
         <h1 className="font-display text-4xl font-bold leading-none tracking-tight sm:text-5xl">{comp.name}</h1>
@@ -49,7 +49,7 @@ export default async function LeaguePage({ params }: { params: Promise<{ id: str
               <li key={p.player_id} className="flex items-center gap-3 px-3 py-1.5">
                 <span className="w-5 text-right font-display text-lg text-muted-foreground">{i + 1}.</span>
                 <div className="min-w-0 flex-1">
-                  <Link href={`/players/${p.player_id}`} className="font-semibold hover:text-accent">
+                  <Link href={`/players/${p.player_id}`} className="font-semibold hover:bg-accent hover:text-black">
                     {titleCase(p.full_name)}
                   </Link>
                   <div className="truncate text-[11px] text-muted-foreground">
@@ -70,14 +70,14 @@ export default async function LeaguePage({ params }: { params: Promise<{ id: str
               <li key={p.player_id} className="flex items-center gap-3 px-3 py-1.5">
                 <span className="w-5 text-right font-display text-lg text-muted-foreground">{i + 1}.</span>
                 <div className="min-w-0 flex-1">
-                  <Link href={`/players/${p.player_id}`} className="font-semibold hover:text-accent">
+                  <Link href={`/players/${p.player_id}`} className="font-semibold hover:bg-accent hover:text-black">
                     {titleCase(p.full_name)}
                   </Link>
                   <div className="truncate text-[11px] text-muted-foreground">
                     <ClubLink id={p.club_id} name={p.club_name} />, {p.matches_played} meccs, {p.total_minutes}′
                   </div>
                 </div>
-                <span className="bg-black px-2 font-display text-xl font-bold text-accent">{p.goals}</span>
+                <span className="border-2 border-black bg-black px-2 font-display text-xl font-bold text-accent">{p.goals}</span>
               </li>
             ))}
             {scorers.length === 0 && <li className="px-3 py-4 text-sm text-muted-foreground">Még nincs gól.</li>}

@@ -19,7 +19,7 @@ export default async function HomePage() {
       <section className="space-y-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <h1 className="font-display text-4xl font-bold leading-[0.95] tracking-tight sm:text-6xl">
+            <h1 className="font-display text-5xl font-extrabold leading-[0.9] tracking-tight sm:text-7xl">
               Ki mennyit ér az NB III-tól a megyei osztályokig
             </h1>
             <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
@@ -28,16 +28,16 @@ export default async function HomePage() {
             </p>
           </div>
           {/* scoreboard */}
-          <dl className="grid grid-cols-2 border-2 border-[#2a3038] bg-black sm:grid-cols-4 lg:shrink-0">
+          <dl className="grid grid-cols-2 border-[3px] border-black bg-black shadow-[6px_6px_0_var(--color-accent)] sm:grid-cols-4 lg:shrink-0">
             {[
               ["Játékos", fmtNum(h.totals?.players, 0)],
               ["Klub", fmtNum(h.totals?.clubs, 0)],
               ["Összérték", fmtValue(h.totals?.value)],
               ["Átigazolás", fmtNum(h.transferCount, 0)],
             ].map(([label, value]) => (
-              <div key={label} className="border-[#2a3038] px-4 py-2 odd:border-r sm:border-r sm:last:border-r-0">
-                <dd className="font-display text-2xl font-bold text-accent">{value}</dd>
-                <dt className="text-[11px] text-muted-foreground">{label}</dt>
+              <div key={label} className="border-white/25 px-4 py-2 odd:border-r-2 sm:border-r-2 sm:last:border-r-0">
+                <dd className="font-display text-3xl font-extrabold text-accent">{value}</dd>
+                <dt className="text-xs text-white/75">{label}</dt>
               </div>
             ))}
           </dl>
@@ -48,15 +48,15 @@ export default async function HomePage() {
       <div className="grid gap-10 lg:grid-cols-5">
         <section className="lg:col-span-2">
           <SectorHeading sector="A" title="A legértékesebb keretek" sub="A játékosok becsült értékének összege" />
-          <ol className="border border-border">
+          <ol className="border-[3px] border-black bg-white shadow-[4px_4px_0_#000]">
             {h.clubs.map((c, i) => (
-              <li key={c.club_id} className="border-t border-border first:border-t-0">
-                <Link href={`/clubs/${c.club_id}`} className="group block px-3 py-2 hover:bg-secondary/60">
+              <li key={c.club_id} className="border-t-2 border-black first:border-t-0">
+                <Link href={`/clubs/${c.club_id}`} className="group block px-3 py-2 hover:bg-[#fff6cc]">
                   <div className="flex items-center gap-3">
-                    <span className="w-5 text-right font-display text-lg text-muted-foreground">{i + 1}.</span>
+                    <span className="w-5 text-right font-display text-xl font-bold">{i + 1}.</span>
                     <ClubCrest name={c.name} logoUrl={c.logo_url} size={26} />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-semibold group-hover:text-accent">{clubCase(c.name)}</div>
+                      <div className="truncate font-semibold">{clubCase(c.name)}</div>
                       <div className="text-[11px] text-muted-foreground">
                         {c.competition_short ?? "–"}, {c.squad_size} fős keret
                         {c.avg_age ? `, átlagéletkor ${fmtNum(c.avg_age, 1)}` : ""}
@@ -65,8 +65,8 @@ export default async function HomePage() {
                     <ValueTag value={c.squad_value_huf} size="sm" />
                   </div>
                   {/* stand-section bar: share of the most valuable squad */}
-                  <div className="ml-8 mt-1.5 h-1.5 bg-secondary">
-                    <div className="h-full bg-accent/80" style={{ width: `${(c.squad_value_huf / maxClub) * 100}%` }} />
+                  <div className="ml-8 mt-1.5 h-2.5 border-2 border-black bg-white">
+                    <div className="h-full bg-accent" style={{ width: `${(c.squad_value_huf / maxClub) * 100}%` }} />
                   </div>
                 </Link>
               </li>
@@ -79,7 +79,7 @@ export default async function HomePage() {
             sector="B"
             title="Friss átigazolások"
             sub={`Klubváltások a ${h.season} szezon elején`}
-            action={<Link href="/transfers" className="text-accent hover:underline">Összes átigazolás</Link>}
+            action={<Link href="/transfers" className="nb-press inline-block border-[3px] border-black bg-accent px-2 py-0.5 font-bold">Összes átigazolás</Link>}
           />
           <TransferList rows={h.transfers} />
         </section>
@@ -87,23 +87,23 @@ export default async function HomePage() {
 
       <section>
         <SectorHeading sector="C" title="Bajnokságok" sub="Éllovas és a keretek összértéke" />
-        <div className="grid gap-px border border-border bg-border sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {h.leagues.map((l) => (
-            <Link key={l.competition_id} href={`/leagues/${l.competition_id}`} className="group bg-card p-3 hover:bg-secondary">
-              <div className="text-[11px] text-muted-foreground">{TIER_LABEL[l.tier] ?? `${l.tier}. szint`}</div>
-              <div className="font-display text-xl font-semibold leading-tight group-hover:text-accent">{l.name}</div>
+            <Link key={l.competition_id} href={`/leagues/${l.competition_id}`} className="nb-press group border-[3px] border-black bg-white p-3">
+              <div className="text-xs font-semibold text-muted-foreground">{TIER_LABEL[l.tier] ?? `${l.tier}. szint`}</div>
+              <div className="font-display text-2xl font-extrabold leading-tight">{l.name}</div>
               <div className="mt-2 flex items-center justify-between gap-2 text-xs">
                 <span className="min-w-0 truncate text-muted-foreground">
                   Éllovas: <span className="text-foreground">{l.leader_name ? clubCase(l.leader_name) : "–"}</span>
                 </span>
-                <span className="shrink-0 font-display text-base text-accent">{fmtValue(l.total_value_huf)}</span>
+                <span className="shrink-0 border-2 border-black bg-black px-1.5 font-display text-base font-bold text-accent">{fmtValue(l.total_value_huf)}</span>
               </div>
               <div className="mt-1 text-[11px] text-muted-foreground">
                 {l.clubs} klub, {l.matches} lejátszott meccs
               </div>
             </Link>
           ))}
-          <Link href="/leagues" className="grid place-items-center bg-black p-3 font-display text-lg text-accent hover:bg-secondary">
+          <Link href="/leagues" className="nb-press grid place-items-center border-[3px] border-black bg-accent p-3 font-display text-2xl font-extrabold">
             Összes bajnokság
           </Link>
         </div>
@@ -112,11 +112,11 @@ export default async function HomePage() {
       {h.risers.length > 0 && (
         <section>
           <SectorHeading sector="D" title="Akiknek a legtöbbet nőtt az értéke" sub="Az előző szezonhoz képest" />
-          <div className="grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-px border-[3px] border-black bg-black shadow-[4px_4px_0_#000] sm:grid-cols-2 lg:grid-cols-3">
             {h.risers.map((p) => (
-              <div key={p.player_id} className="flex items-center justify-between gap-3 bg-card px-3 py-2">
+              <div key={p.player_id} className="flex items-center justify-between gap-3 bg-white px-3 py-2">
                 <div className="min-w-0">
-                  <Link href={`/players/${p.player_id}`} className="font-semibold hover:text-accent">
+                  <Link href={`/players/${p.player_id}`} className="font-semibold hover:bg-accent hover:text-black">
                     {titleCase(p.full_name)}
                   </Link>
                   <div className="truncate text-[11px] text-muted-foreground">

@@ -28,10 +28,10 @@ export const STATUS_LABEL: Record<NoteStatus, string> = {
 export const STATUS_ORDER: NoteStatus[] = ["shortlist", "contacted", "watching", "radar", "rejected"];
 
 export const STATUS_STYLE: Record<NoteStatus, string> = {
-  radar: "bg-sky-500/15 text-sky-300 ring-sky-500/30",
+  radar: "bg-sky-500/15 text-sky-800 ring-sky-500/30",
   watching: "bg-violet-500/15 text-violet-300 ring-violet-500/30",
-  shortlist: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30",
-  contacted: "bg-amber-500/15 text-amber-300 ring-amber-500/30",
+  shortlist: "bg-emerald-500/15 text-emerald-800 ring-emerald-500/30",
+  contacted: "bg-amber-500/15 text-amber-800 ring-amber-500/30",
   rejected: "bg-zinc-500/15 text-zinc-400 ring-zinc-500/30",
 };
 
@@ -48,11 +48,11 @@ export type RadarKey = (typeof RADAR_AXES)[number]["key"];
 export type RadarVector = Record<RadarKey, number>;
 
 export const ARCHETYPE_STYLE: Record<string, string> = {
-  Motor: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30",
+  Motor: "bg-emerald-500/15 text-emerald-800 ring-emerald-500/30",
   Szupercsere: "bg-fuchsia-500/15 text-fuchsia-300 ring-fuchsia-500/30",
-  "Gólfelelős": "bg-amber-500/15 text-amber-300 ring-amber-500/30",
-  "Ütköző": "bg-rose-500/15 text-rose-300 ring-rose-500/30",
-  "Fiatalszabály-opció": "bg-sky-500/15 text-sky-300 ring-sky-500/30",
+  "Gólfelelős": "bg-amber-500/15 text-amber-800 ring-amber-500/30",
+  "Ütköző": "bg-rose-500/15 text-rose-700 ring-rose-500/30",
+  "Fiatalszabály-opció": "bg-sky-500/15 text-sky-800 ring-sky-500/30",
   "Biztos kéz": "bg-teal-500/15 text-teal-300 ring-teal-500/30",
 };
 

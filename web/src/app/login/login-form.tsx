@@ -24,7 +24,7 @@ export function LoginForm({ next }: { next: string }) {
         <Label htmlFor="passcode">Belépési kód</Label>
         <Input id="passcode" name="passcode" type="password" autoFocus={Boolean(state?.name)} required />
       </div>
-      {state && !state.ok && <p className="text-sm text-rose-400">{state.message}</p>}
+      {state && !state.ok && <p className="text-sm text-rose-700">{state.message}</p>}
       <Button type="submit" className="w-full" disabled={pending}>
         {pending ? "Belépés…" : "Belépés"}
       </Button>

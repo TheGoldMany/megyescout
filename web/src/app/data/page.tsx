@@ -51,8 +51,8 @@ export default async function DataHealthPage() {
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 sm:gap-3">
         {tiles.map((t) => (
           <div key={t.label} className={cn("rounded-lg border bg-card p-3", t.warn && "border-amber-500/30")}>
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{t.label}</div>
-            <div className={cn("mt-1 font-mono text-xl font-semibold", t.warn && "text-amber-300")}>{t.value}</div>
+            <div className="text-[11px] font-semibold text-muted-foreground">{t.label}</div>
+            <div className={cn("mt-1 font-mono text-xl font-semibold", t.warn && "text-amber-800")}>{t.value}</div>
             {t.hint && <div className="mt-0.5 text-[11px] text-muted-foreground">{t.hint}</div>}
           </div>
         ))}
@@ -65,7 +65,7 @@ export default async function DataHealthPage() {
         </CardHeader>
         <CardContent className="overflow-x-auto px-0">
           <table className="w-full text-xs">
-            <thead className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            <thead className="text-[11px] font-semibold text-muted-foreground">
               <tr className="border-b">
                 <th className="py-2 pl-4 text-left font-medium">Állapot</th>
                 <th className="px-2 text-left font-medium">Indítva</th>
@@ -81,11 +81,11 @@ export default async function DataHealthPage() {
                 <tr key={r.id} className="border-b border-border/50 last:border-0">
                   <td className="py-2 pl-4">
                     {r.status === "ok" ? (
-                      <span className="inline-flex items-center gap-1 text-emerald-300"><CheckCircle2 className="h-3.5 w-3.5" /> Rendben</span>
+                      <span className="inline-flex items-center gap-1 text-emerald-800"><CheckCircle2 className="h-3.5 w-3.5" /> Rendben</span>
                     ) : r.status === "failed" ? (
-                      <span className="inline-flex items-center gap-1 text-rose-300"><XCircle className="h-3.5 w-3.5" /> Hiba</span>
+                      <span className="inline-flex items-center gap-1 text-rose-700"><XCircle className="h-3.5 w-3.5" /> Hiba</span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-sky-300"><Clock className="h-3.5 w-3.5" /> Fut</span>
+                      <span className="inline-flex items-center gap-1 text-sky-800"><Clock className="h-3.5 w-3.5" /> Fut</span>
                     )}
                   </td>
                   <td className="whitespace-nowrap px-2 font-mono">{fmtDateTime(r.started_at)}</td>
@@ -97,7 +97,7 @@ export default async function DataHealthPage() {
                   <td className="px-2 text-right font-mono">{r.players_upserted}</td>
                   <td className="max-w-[360px] truncate pr-4 text-muted-foreground" title={r.error ?? ""}>
                     {r.error ? (
-                      <span className="inline-flex items-center gap-1 text-amber-300">
+                      <span className="inline-flex items-center gap-1 text-amber-800">
                         <AlertTriangle className="h-3 w-3 shrink-0" /> {r.error}
                       </span>
                     ) : (
@@ -124,7 +124,7 @@ export default async function DataHealthPage() {
           </CardHeader>
           <CardContent className="overflow-x-auto px-0">
             <table className="w-full text-xs">
-              <thead className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              <thead className="text-[11px] font-semibold text-muted-foreground">
                 <tr className="border-b">
                   <th className="py-2 pl-4 text-left font-medium">Bajnokság</th>
                   <th className="px-2 text-left font-medium">Szezon</th>
@@ -172,7 +172,7 @@ export default async function DataHealthPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <MapPinOff className="h-4 w-4 text-amber-400" /> Helymeghatározás nélküli klubok
+              <MapPinOff className="h-4 w-4 text-amber-800" /> Helymeghatározás nélküli klubok
             </CardTitle>
             <CardDescription>
               Ezek játékosai nem jelennek meg távolságszűrésnél. Pótlás: <code className="font-mono">cli.py geo --set</code>
@@ -180,7 +180,7 @@ export default async function DataHealthPage() {
           </CardHeader>
           <CardContent>
             {unlocated.length === 0 ? (
-              <p className="text-sm text-emerald-300">Minden klub helye ismert.</p>
+              <p className="text-sm text-emerald-800">Minden klub helye ismert.</p>
             ) : (
               <ul className="space-y-1 text-xs">
                 {unlocated.map((c) => (

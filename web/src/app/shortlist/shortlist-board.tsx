@@ -118,7 +118,7 @@ function ShortlistCard({ r, selected, onToggle }: { r: ShortlistRow; selected: b
       )}
 
       <div className="mt-2 flex items-center justify-between gap-2 border-t pt-2">
-        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Státusz</span>
+        <span className="text-[10px] font-semibold text-muted-foreground">Státusz</span>
         <select
           value={r.status}
           disabled={pending}

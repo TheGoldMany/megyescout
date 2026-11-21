@@ -104,7 +104,7 @@ export function ExplorerFilters({
           aria-expanded={open}
         >
           <SlidersHorizontal className="h-3.5 w-3.5" /> {open ? "Szűrők elrejtése" : "További szűrők"}
-          {activeCount(sp) > 0 && <span className="rounded bg-primary/20 px-1 font-mono text-emerald-300">{activeCount(sp)}</span>}
+          {activeCount(sp) > 0 && <span className="rounded bg-primary/20 px-1 font-mono text-emerald-800">{activeCount(sp)}</span>}
         </button>
         <div className={cn(!open && "hidden md:block")}>
           <Label>Poszt</Label>
@@ -157,7 +157,7 @@ export function ExplorerFilters({
             }
             className={cn(
               "inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border px-2 text-xs font-medium transition",
-              youthOn ? "border-sky-500/50 bg-sky-500/15 text-sky-300" : "border-input text-muted-foreground hover:bg-secondary",
+              youthOn ? "border-sky-500/50 bg-sky-500/15 text-sky-800" : "border-input text-muted-foreground hover:bg-secondary",
             )}
           >
             <Sparkles className="h-3.5 w-3.5" />

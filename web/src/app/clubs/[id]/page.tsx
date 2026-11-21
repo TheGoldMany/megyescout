@@ -30,7 +30,7 @@ export default async function ClubPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="space-y-9">
       {/* name board */}
-      <section className="concrete border-2 border-[#2a3038]">
+      <section className="nb-box border-[3px] shadow-[7px_7px_0_#000]">
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
           <ClubCrest name={data.name} logoUrl={club?.logo_url} size={72} />
           <div className="min-w-0 flex-1">
@@ -44,23 +44,23 @@ export default async function ClubPage({ params }: { params: Promise<{ id: strin
                 </span>
               )}
               {club?.competition_id && (
-                <Link href={`/leagues/${club.competition_id}`} className="text-foreground hover:text-accent hover:underline">
+                <Link href={`/leagues/${club.competition_id}`} className="text-foreground hover:bg-accent hover:text-black hover:underline">
                   {club.competition_short}
                 </Link>
               )}
               {venue && <span>Pálya: {venue}</span>}
             </div>
           </div>
-          <dl className="grid grid-cols-2 border-2 border-[#2a3038] bg-black sm:grid-cols-4">
+          <dl className="grid grid-cols-2 border-[3px] border-black bg-black shadow-[5px_5px_0_var(--color-accent)] sm:grid-cols-4">
             {[
               ["Keretérték", fmtValue(club?.squad_value_huf)],
               ["Keret", club ? `${club.squad_size} fő` : "–"],
               ["Átlagéletkor", club?.avg_age ? fmtNum(club.avg_age, 1) : "–"],
               ["Helyezés", place >= 0 ? `${place + 1}.` : "–"],
             ].map(([label, value]) => (
-              <div key={label} className="border-[#2a3038] px-3 py-2 odd:border-r sm:border-r sm:last:border-r-0">
+              <div key={label} className="border-white/25 px-3 py-2 odd:border-r-2 sm:border-r-2 sm:last:border-r-0">
                 <dd className="font-display text-2xl font-bold text-accent">{value}</dd>
-                <dt className="text-[11px] text-muted-foreground">{label}</dt>
+                <dt className="text-[11px] text-white/75">{label}</dt>
               </div>
             ))}
           </dl>
@@ -72,7 +72,7 @@ export default async function ClubPage({ params }: { params: Promise<{ id: strin
           <SectorHeading sector="A" title="Keret" sub={`${season} szezon, becsült értékek`} />
           <div className="overflow-x-auto border border-border">
             <table className="w-full text-sm">
-              <thead className="bg-black text-left text-xs text-muted-foreground">
+              <thead className="bg-black text-left text-xs text-white">
                 <tr>
                   <th className="px-3 py-2 font-medium">Játékos</th>
                   <th className="px-2 py-2 text-right font-medium">Kor</th>
@@ -88,7 +88,7 @@ export default async function ClubPage({ params }: { params: Promise<{ id: strin
                 if (!group.length) return null;
                 return (
                   <tbody key={pos}>
-                    <tr className="border-t-2 border-[#2a3038] bg-secondary/60">
+                    <tr className="border-t-[3px] border-black bg-secondary">
                       <th colSpan={7} className="px-3 py-1 text-left font-display text-sm font-semibold">
                         {POSITION_LABEL[pos]}
                         <span className="ml-2 font-sans text-xs font-normal text-muted-foreground">
@@ -99,7 +99,7 @@ export default async function ClubPage({ params }: { params: Promise<{ id: strin
                     {group.map((p) => (
                       <tr key={p.player_id} className="border-t border-border hover:bg-secondary/40">
                         <td className="px-3 py-1.5">
-                          <Link href={`/players/${p.player_id}`} className="font-medium hover:text-accent">
+                          <Link href={`/players/${p.player_id}`} className="font-medium hover:bg-accent hover:text-black">
                             {titleCase(p.full_name)}
                           </Link>
                         </td>
@@ -135,7 +135,7 @@ export default async function ClubPage({ params }: { params: Promise<{ id: strin
                 title="Tabella"
                 action={
                   club?.competition_id ? (
-                    <Link href={`/leagues/${club.competition_id}`} className="text-accent hover:underline">
+                    <Link href={`/leagues/${club.competition_id}`} className="font-semibold underline decoration-2 underline-offset-4 nb-mark">
                       Teljes tabella
                     </Link>
                   ) : undefined
@@ -158,7 +158,7 @@ export default async function ClubPage({ params }: { params: Promise<{ id: strin
                   <span
                     className={cn(
                       "grid h-5 w-6 shrink-0 place-items-center font-display text-[11px] font-bold",
-                      res === "GY" ? "bg-primary text-primary-foreground" : res === "D" ? "bg-accent text-accent-foreground" : "bg-seat text-white",
+                      res === "GY" ? "bg-primary text-primary-foreground" : res === "D" ? "bg-accent text-accent-foreground" : "bg-seat text-black",
                     )}
                   >
                     {res}

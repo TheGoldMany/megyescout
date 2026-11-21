@@ -22,15 +22,15 @@ export function SectorHeading({
     <div id={`szektor-${sector.toLowerCase()}`} className="mb-3 flex scroll-mt-28 items-end gap-3">
       <span
         aria-hidden
-        className="grid h-10 w-10 shrink-0 place-items-center border-2 border-accent bg-black font-display text-2xl font-bold text-accent"
+        className="grid h-11 w-11 shrink-0 place-items-center border-[3px] border-black bg-black font-display text-3xl font-extrabold text-accent shadow-[4px_4px_0_var(--color-accent)]"
       >
         {sector}
       </span>
       <div className="min-w-0">
-        <h2 className="font-display text-2xl font-semibold leading-none tracking-tight">{title}</h2>
-        {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
+        <h2 className="font-display text-3xl font-extrabold leading-none tracking-tight">{title}</h2>
+        {sub && <p className="mt-1 text-xs font-medium text-muted-foreground">{sub}</p>}
       </div>
-      <div className="mb-1.5 h-px flex-1 bg-steel" />
+      <div className="mb-2 h-[3px] flex-1 bg-black" />
       {action && <div className="mb-0.5 shrink-0 text-sm">{action}</div>}
     </div>
   );
@@ -54,14 +54,14 @@ export function ValueTag({
     <span className={cn("inline-flex items-baseline gap-1.5 whitespace-nowrap", className)}>
       <span
         className={cn(
-          "bg-black px-1.5 font-display font-semibold text-accent",
+          "border-2 border-black bg-black px-1.5 font-display font-bold text-accent",
           size === "lg" ? "text-3xl leading-tight" : size === "md" ? "text-lg leading-snug" : "text-sm",
         )}
       >
         {fmtValue(value)}
       </span>
       {delta && (
-        <span className={cn("font-display text-xs font-semibold", up ? "text-primary" : "text-seat")}>
+        <span className={cn("border-2 border-black px-1 font-display text-xs font-bold text-black", up ? "bg-primary" : "bg-seat")}>
           {up ? "▲" : "▼"} {delta}
         </span>
       )}
@@ -98,7 +98,7 @@ function initials(name: string) {
 export function ClubCrest({ name, logoUrl, size = 36 }: { name: string; logoUrl?: string | null; size?: number }) {
   if (logoUrl) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={logoUrl} alt="" width={size} height={size} className="shrink-0 bg-white/5 object-contain p-0.5" style={{ width: size, height: size }} />;
+    return <img src={logoUrl} alt="" width={size} height={size} className="shrink-0 border-2 border-black bg-white object-contain p-0.5" style={{ width: size, height: size }} />;
   }
   const [bg, fg] = CREST_COLOURS[hash(name) % CREST_COLOURS.length];
   return (
@@ -123,7 +123,7 @@ export function ClubLink({ id, name, className }: { id: string | null; name: str
   const label = name ? clubCase(name) : "–";
   if (!id) return <span className={className}>{label}</span>;
   return (
-    <Link href={`/clubs/${id}`} className={cn("hover:text-accent hover:underline", className)}>
+    <Link href={`/clubs/${id}`} className={cn("hover:bg-accent hover:text-black hover:underline", className)}>
       {label}
     </Link>
   );
@@ -151,17 +151,17 @@ export function Grandstand({ players, seasonStart }: { players: Seat[]; seasonSt
     { label: "Alsó karéj", from: 8, to: 15, inset: "", big: false },
   ];
   return (
-    <section aria-label="A legértékesebb játékosok" className="relative border border-border bg-black">
+    <section aria-label="A legértékesebb játékosok" className="relative border-[3px] border-black bg-white shadow-[8px_8px_0_#000]">
       {/* cantilevered roof with two floodlight heads */}
-      <div className="truss relative h-7">
-        <div className="lamps floodlight-on absolute -bottom-3 left-3 h-6 w-14" />
-        <div className="lamps floodlight-on absolute -bottom-3 right-3 h-6 w-14" />
+      <div className="truss relative h-8 border-t-0">
+        <div className="lamps floodlight-on absolute -bottom-4 left-3 h-7 w-16" />
+        <div className="lamps floodlight-on absolute -bottom-4 right-3 h-7 w-16" />
       </div>
       <div className="space-y-0 px-2 pb-0 pt-6 sm:px-4">
         {tiers.map((t, ti) => (
-          <div key={t.label} className={cn("seats border-b-[6px] border-[#2a3038] pb-2 pt-2", t.inset)}>
-            <div className="mb-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-              <span className="h-px w-4 bg-steel" />
+          <div key={t.label} className={cn("seats border-x-[3px] border-b-[6px] border-t-[3px] border-black px-2 pb-2.5 pt-2", ti > 0 && "-mt-[3px]", t.inset)}>
+            <div className="mb-1.5 flex items-center gap-2 text-xs font-bold text-black">
+              <span className="h-[3px] w-5 bg-black" />
               {t.label}
             </div>
             <ol
@@ -175,7 +175,7 @@ export function Grandstand({ players, seasonStart }: { players: Seat[]; seasonSt
                 <li key={p.player_id}>
                   <Link
                     href={`/players/${p.player_id}`}
-                    className="group flex h-full flex-col justify-between border border-border bg-card/90 p-2 transition-colors hover:border-accent"
+                    className="nb-press group flex h-full flex-col justify-between border-[3px] border-black bg-white p-2"
                   >
                     <div className="flex items-start justify-between gap-1">
                       <span className="font-display text-sm font-bold text-muted-foreground">{t.from + i + 1}.</span>
@@ -185,7 +185,7 @@ export function Grandstand({ players, seasonStart }: { players: Seat[]; seasonSt
                         </span>
                       )}
                     </div>
-                    <div className={cn("mt-1 font-semibold leading-tight group-hover:text-accent", t.big ? "text-lg" : "text-sm")}>
+                    <div className={cn("mt-1 font-semibold leading-tight", t.big ? "text-lg" : "text-sm")}>
                       {titleCase(p.full_name)}
                     </div>
                     <div className="truncate text-[11px] text-muted-foreground">
@@ -201,7 +201,7 @@ export function Grandstand({ players, seasonStart }: { players: Seat[]; seasonSt
         ))}
       </div>
       {/* touchline */}
-      <div className="pitch h-4 border-t-2 border-white/70" />
+      <div className="pitch h-5 border-t-[3px] border-black" />
     </section>
   );
 }
@@ -214,25 +214,25 @@ type PitchPlayer = { player_id: string; full_name: string; primary_position: Pos
 export function Pitch({ players }: { players: PitchPlayer[] }) {
   const lines: Position[] = ["FWD", "MID", "DEF", "GK"];
   return (
-    <div className="pitch relative border-2 border-white/70 p-3">
+    <div className="pitch relative border-[3px] border-black p-3 shadow-[6px_6px_0_#000]">
       {/* chalk: halfway line and the two penalty boxes */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 h-0.5 bg-white/40" />
-      <div aria-hidden className="pointer-events-none absolute left-1/2 top-0 h-[16%] w-[44%] -translate-x-1/2 border-2 border-t-0 border-white/40" />
-      <div aria-hidden className="pointer-events-none absolute bottom-0 left-1/2 h-[16%] w-[44%] -translate-x-1/2 border-2 border-b-0 border-white/40" />
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 h-0.5 bg-white/80" />
+      <div aria-hidden className="pointer-events-none absolute left-1/2 top-0 h-[16%] w-[44%] -translate-x-1/2 border-[3px] border-t-0 border-white/80" />
+      <div aria-hidden className="pointer-events-none absolute bottom-0 left-1/2 h-[16%] w-[44%] -translate-x-1/2 border-[3px] border-b-0 border-white/80" />
       <div className="relative grid gap-4 py-2">
         {lines.map((pos) => {
           const row = players.filter((p) => p.primary_position === pos).slice(0, pos === "GK" ? 2 : 6);
           return (
             <div key={pos} className="flex flex-wrap items-stretch justify-center gap-1.5">
-              {row.length === 0 && <span className="text-xs text-white/50">nincs {POSITION_LABEL[pos].toLowerCase()}</span>}
+              {row.length === 0 && <span className="bg-white/80 px-1 text-xs font-semibold text-black">nincs {POSITION_LABEL[pos].toLowerCase()}</span>}
               {row.map((p) => (
                 <Link
                   key={p.player_id}
                   href={`/players/${p.player_id}`}
-                  className="min-w-[104px] border border-black/60 bg-black/75 px-2 py-1 text-center hover:border-accent"
+                  className="nb-press min-w-[104px] border-[3px] border-black bg-white px-2 py-1 text-center"
                 >
                   <div className="truncate text-xs font-semibold">{titleCase(p.full_name)}</div>
-                  <div className="font-display text-xs text-accent">{fmtValue(p.market_value_huf)}</div>
+                  <div className="font-display text-sm font-bold">{fmtValue(p.market_value_huf)}</div>
                 </Link>
               ))}
             </div>
@@ -264,14 +264,14 @@ type Standing = {
 const FORM_TONE: Record<string, string> = {
   GY: "bg-primary text-primary-foreground",
   D: "bg-accent text-accent-foreground",
-  V: "bg-seat text-white",
+  V: "bg-seat text-black",
 };
 
 export function StandingsTable({ rows, highlight, compact = false }: { rows: Standing[]; highlight?: string; compact?: boolean }) {
   return (
-    <div className="overflow-x-auto border border-border">
+    <div className="overflow-x-auto border-[3px] border-black bg-white shadow-[4px_4px_0_#000]">
       <table className="w-full text-sm">
-        <thead className="bg-black text-left text-xs text-muted-foreground">
+        <thead className="bg-black text-left text-xs text-white">
           <tr>
             <th className="w-8 px-2 py-2 text-right font-medium">#</th>
             <th className="px-2 py-2 font-medium">Klub</th>
@@ -294,9 +294,10 @@ export function StandingsTable({ rows, highlight, compact = false }: { rows: Sta
           {rows.map((r, i) => (
             <tr
               key={r.club_id}
+              aria-current={r.club_id === highlight ? "true" : undefined}
               className={cn(
-                "border-t border-border",
-                r.club_id === highlight ? "bg-accent/10 outline outline-1 -outline-offset-1 outline-accent" : "hover:bg-secondary/60",
+                "border-t-2 border-black",
+                r.club_id === highlight ? "bg-accent font-semibold" : "hover:bg-[#fff6cc]",
               )}
             >
               <td className="px-2 py-1.5 text-right font-display text-base">{i + 1}.</td>
@@ -319,13 +320,13 @@ export function StandingsTable({ rows, highlight, compact = false }: { rows: Sta
               )}
               <td className="px-1.5 text-right font-display text-base">{r.gd > 0 ? `+${r.gd}` : r.gd}</td>
               <td className="px-2 text-right">
-                <span className="bg-black px-1.5 font-display text-base font-bold text-accent">{r.pts}</span>
+                <span className="border-2 border-black bg-black px-1.5 font-display text-base font-bold text-accent">{r.pts}</span>
               </td>
               {!compact && (
                 <td className="hidden px-2 md:table-cell">
                   <span className="flex gap-0.5">
                     {r.form.map((f, k) => (
-                      <span key={k} className={cn("grid h-5 w-6 place-items-center font-display text-[11px] font-bold", FORM_TONE[f])}>
+                      <span key={k} className={cn("grid h-5 w-6 place-items-center border-2 border-black font-display text-[11px] font-bold", FORM_TONE[f])}>
                         {f}
                       </span>
                     ))}
@@ -366,9 +367,9 @@ export function TransferList({
   showSeason?: boolean;
   perspective?: "in" | "out";
 }) {
-  if (!rows.length) return <p className="border border-border p-4 text-sm text-muted-foreground">Nincs rögzített átigazolás.</p>;
+  if (!rows.length) return <p className="nb-box p-4 text-sm text-muted-foreground">Nincs rögzített átigazolás.</p>;
   return (
-    <ul className="divide-y divide-border border border-border">
+    <ul className="divide-y-2 divide-black border-[3px] border-black bg-white shadow-[4px_4px_0_#000]">
       {rows.map((t) => (
         <li
           key={t.id}
@@ -378,7 +379,7 @@ export function TransferList({
           )}
         >
           <div className="min-w-0">
-            <Link href={`/players/${t.player_id}`} className="font-semibold hover:text-accent">
+            <Link href={`/players/${t.player_id}`} className="font-semibold hover:bg-accent hover:text-black">
               {titleCase(t.full_name)}
             </Link>
             <div className="text-[11px] text-muted-foreground">
@@ -400,7 +401,7 @@ export function TransferList({
             <div className="col-span-2 row-start-2 flex min-w-0 items-center gap-2 text-sm sm:col-span-1 sm:row-start-auto">
               <ClubCrest name={t.from_club} size={18} />
               <ClubLink id={t.from_club_id} name={t.from_club} className="truncate text-muted-foreground" />
-              <span aria-label="ide igazolt" className="shrink-0 font-display text-accent">
+              <span aria-label="ide igazolt" className="shrink-0 font-display text-black">
                 ▶
               </span>
               <ClubCrest name={t.to_club} size={18} />

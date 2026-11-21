@@ -1,32 +1,33 @@
 @import "tailwindcss";
 
 /*
- * HUN-SCOUT · "lelátó éjjel" — a stadium at night under floodlights.
- * Materials: night sky, raw concrete, steel truss, pitch, floodlight amber, seat red, chalk lines.
+ * HUN-SCOUT · neo-brutalist stadium: raw concrete, steel truss, painted boards in ink outlines,
+ * hard solid shadows, flat floodlight yellow, pitch green and seat red.
  * Hard rule from the client: no rounded corners or edges anywhere (see the reset below).
  */
 @theme inline {
-  --color-background: #090d16;   /* night */
-  --color-foreground: #ededE6;   /* chalk */
-  --color-card: #111827;
-  --color-card-foreground: #ededE6;
-  --color-popover: #111827;
-  --color-popover-foreground: #ededE6;
-  --color-primary: #10b981;      /* pitch */
-  --color-primary-foreground: #04120c;
-  --color-secondary: #1c222b;    /* shadowed concrete */
-  --color-secondary-foreground: #ededE6;
-  --color-muted: #1c222b;
-  --color-muted-foreground: #9aa0a6; /* concrete */
-  --color-accent: #f59e0b;       /* floodlight / scoreboard */
-  --color-accent-foreground: #1a1203;
-  --color-destructive: #d9483b;  /* seat red */
-  --color-border: #2a3038;       /* expansion joints */
-  --color-input: #343b45;
-  --color-ring: #f59e0b;
-  --color-concrete: #9aa0a6;
-  --color-steel: #3b4450;
-  --color-seat: #d9483b;
+  --color-background: #d6d8d1;   /* raw concrete in daylight */
+  --color-foreground: #000000;   /* ink */
+  --color-card: #ffffff;         /* painted board */
+  --color-card-foreground: #000000;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #000000;
+  --color-primary: #00a862;      /* pitch */
+  --color-primary-foreground: #000000;
+  --color-secondary: #c3c6be;    /* shadowed concrete */
+  --color-secondary-foreground: #000000;
+  --color-muted: #c3c6be;
+  --color-muted-foreground: #464b52;
+  --color-accent: #ffc414;       /* floodlight / scoreboard */
+  --color-accent-foreground: #000000;
+  --color-destructive: #ff4b3e;  /* seat red */
+  --color-border: #000000;
+  --color-input: #000000;
+  --color-ring: #000000;
+  --color-concrete: #6b7078;
+  --color-steel: #000000;
+  --color-seat: #ff4b3e;
+  --color-ink: #000000;
   --font-sans: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-barlow-condensed), var(--font-barlow), sans-serif;
   /* numbers everywhere read like a scoreboard: condensed, tabular */
@@ -34,6 +35,9 @@
   --radius-sm: 0;
   --radius-md: 0;
   --radius-lg: 0;
+  /* neo-brutalist hard shadows: solid ink, no blur */
+  --shadow-hard: 4px 4px 0 0 #000;
+  --shadow-hard-lg: 7px 7px 0 0 #000;
 }
 
 /* ---- the client's hard rule: no rounded corners, no rounded line ends ------------------- */
@@ -49,7 +53,7 @@ svg.lucide,
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
@@ -62,6 +66,44 @@ body {
   border-color: var(--color-border);
 }
 
+/* every outline is a painted ink line: 1px hairlines become 2px */
+.border {
+  border-width: 2px;
+}
+
+/* a board: white face, ink outline, solid shadow */
+.nb-box {
+  background: var(--color-card);
+  border: 3px solid #000;
+  box-shadow: var(--shadow-hard);
+}
+/* pressable: lifts on hover, slams down on press */
+.nb-press {
+  box-shadow: var(--shadow-hard);
+  transition: transform 80ms steps(2, end), box-shadow 80ms steps(2, end);
+}
+.nb-press:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 0 #000;
+}
+.nb-press:active {
+  transform: translate(4px, 4px);
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nb-press,
+  .nb-press:hover,
+  .nb-press:active {
+    transition: none;
+    transform: none;
+  }
+}
+/* link highlight: a floodlight-yellow marker stroke instead of colour-only hover */
+.nb-mark:hover {
+  background: var(--color-accent);
+  color: #000;
+}
+
 .font-mono,
 .font-display {
   font-variant-numeric: tabular-nums;
@@ -71,10 +113,10 @@ body {
 /* square native controls */
 input[type="checkbox"] {
   appearance: none;
-  width: 14px;
-  height: 14px;
-  border: 1px solid var(--color-concrete);
-  background: transparent;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #000;
+  background: #fff;
   display: inline-grid;
   place-content: center;
   cursor: pointer;
@@ -87,73 +129,74 @@ input[type="checkbox"]:checked::after {
   content: "";
   width: 6px;
   height: 6px;
-  background: var(--color-primary-foreground);
+  background: #000;
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 3px solid #000;
   outline-offset: 2px;
+  box-shadow: 0 0 0 6px var(--color-accent);
 }
 
 ::-webkit-scrollbar {
-  height: 8px;
-  width: 8px;
+  height: 10px;
+  width: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-steel);
+  background: #000;
 }
 
 /* ---- stadium materials -------------------------------------------------------------- */
 
-/* steel lattice of a cantilevered roof */
+/* steel lattice of a cantilevered roof: black girders, floodlight-yellow gaps */
 .truss {
-  background-color: #141a22;
+  background-color: var(--color-accent);
   background-image:
-    repeating-linear-gradient(60deg, transparent 0 13px, rgba(154, 160, 166, 0.28) 13px 14px),
-    repeating-linear-gradient(-60deg, transparent 0 13px, rgba(154, 160, 166, 0.28) 13px 14px),
-    linear-gradient(to bottom, rgba(154, 160, 166, 0.35) 0 1px, transparent 1px calc(100% - 1px), rgba(154, 160, 166, 0.35) calc(100% - 1px));
+    repeating-linear-gradient(60deg, transparent 0 11px, #000 11px 14px),
+    repeating-linear-gradient(-60deg, transparent 0 11px, #000 11px 14px);
+  border-top: 3px solid #000;
+  border-bottom: 3px solid #000;
 }
 
-/* board-marked concrete: faint vertical formwork seams */
+/* board-marked concrete: formwork seams every 96px */
 .concrete {
-  background-color: #12171f;
-  background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 96px);
+  background-color: var(--color-background);
+  background-image: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.07) 0 2px, transparent 2px 96px);
 }
 
-/* floodlight lamp array on a pylon head */
+/* floodlight head: a grid of square lamps in an ink frame */
 .lamps {
-  background-image: radial-gradient(circle at center, #fff7df 0 1.5px, transparent 2px);
-  background-size: 6px 6px;
-  background-color: #f59e0b;
-  box-shadow: 0 0 22px 6px rgba(245, 158, 11, 0.35);
+  background-color: #fff6cc;
+  background-image:
+    linear-gradient(90deg, #000 0 2px, transparent 2px),
+    linear-gradient(0deg, #000 0 2px, transparent 2px);
+  background-size: 8px 8px;
+  border: 3px solid #000;
 }
 
-/* seat rows: thin horizontal stripes in the stand */
+/* seat rows: red plastic seats with ink risers */
 .seats {
-  background-image: repeating-linear-gradient(0deg, rgba(217, 72, 59, 0.16) 0 2px, transparent 2px 7px);
+  background-color: var(--color-seat);
+  background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 3px, transparent 3px 12px);
 }
 
-/* chalk-lined grass for pitch drawings */
+/* mown grass for pitch drawings */
 .pitch {
-  background-color: #0d3b2a;
-  background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 40px, transparent 40px 80px);
+  background-color: var(--color-primary);
+  background-image: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0 40px, transparent 40px 80px);
 }
 
-/* the one orchestrated moment: floodlights warming up on first paint */
+/* the one orchestrated moment: floodlights switching on in steps on first paint */
 @media (prefers-reduced-motion: no-preference) {
   .floodlight-on {
-    animation: floodlight 1.4s steps(6, end) both;
+    animation: floodlight 0.9s steps(4, end) both;
   }
   @keyframes floodlight {
     0% {
-      opacity: 0.15;
-      box-shadow: none;
-    }
-    60% {
-      opacity: 0.6;
+      background-color: #3a3a3a;
     }
     100% {
-      opacity: 1;
+      background-color: #fff6cc;
     }
   }
 }

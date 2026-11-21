@@ -33,7 +33,7 @@ export function KpiBar({ k }: { k: Kpis }) {
     <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 sm:gap-3">
       {items.map(({ icon: Icon, label, value, sub, small }) => (
         <div key={label} className="min-w-0 rounded-lg border bg-card p-2.5 sm:p-4">
-          <div className="flex items-center gap-1.5 truncate text-[10px] uppercase tracking-wide text-muted-foreground sm:gap-2 sm:text-[11px]">
+          <div className="flex items-center gap-1.5 truncate text-[10px] font-semibold text-muted-foreground sm:gap-2 sm:text-[11px]">
             <Icon className="h-3.5 w-3.5 shrink-0 text-primary" />
             {label}
           </div>
