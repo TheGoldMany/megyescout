@@ -925,6 +925,14 @@ async function getTransfersForPlayer(playerId: string): Promise<TransferRow[]> {
 
 /** False until the migrations have created the schema (fresh database). */
 export async function schemaReady(): Promise<boolean> {
-  const r = await query<{ ok: boolean }>("SELECT to_regclass('public.mv_player_explorer') IS NOT NULL AS ok");
-  return Boolean(r[0]?.ok);
+  const r = await query<{ ok: boolean; db: string; usr: string; host: string | null }>(
+    "SELECT to_regclass('public.mv_player_explorer') IS NOT NULL AS ok, current_database() AS db, " +
+      "current_user AS usr, inet_server_addr()::text AS host",
+  );
+  const row = r[0];
+  if (!row?.ok) {
+    // helps spot a DATABASE_URL that points at another database than the one migrations ran on
+    console.warn(`schema missing: database=${row?.db} user=${row?.usr} server=${row?.host ?? "?"}`);
+  }
+  return Boolean(row?.ok);
 }

@@ -19,6 +19,12 @@ export function SetupNotice() {
           futtasd a migrációt.
         </li>
         <li>
+          Ha a migráció már sikeresen lefutott, és mégis ezt látod, akkor a Vercel{" "}
+          <code className="text-accent">DATABASE_URL</code> másik adatbázisra mutat, mint a GitHub{" "}
+          <code className="text-accent">ETL_DATABASE_URL</code>: a hosztnak és az adatbázis nevének egyeznie kell (a
+          szerver naplója kiírja, melyikhez kapcsolódik az oldal).
+        </li>
+        <li>
           Töltsd be az adatokat: a Vercel-ütemezések hétfőn és szerdán maguktól futnak, vagy helyben:{" "}
           <code className="text-accent">python cli.py scrape --mode backfill --profiles</code>
         </li>
