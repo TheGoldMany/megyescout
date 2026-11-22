@@ -38,6 +38,7 @@ web/                  Next.js 15 App Router, TypeScript, Tailwind v4, shadcn/ui-
 .github/workflows/    ci.yml: pytest · vercel.json schema · tsc/lint/build · E2E (fresh Postgres + seed)
                       migrate.yml: after green CI on the default branch, `cli.py migrate` (secret ETL_DATABASE_URL)
                       backfill.yml: manual-only full-season `cli.py scrape --mode backfill` into production
+                      (or "analytics only": locate clubs + recompute, no download)
 vercel.json           services `web` (public, /(.*)) + `etl` (internal, bound as ETL_URL) + 22 schedules
 scripts/validate_vercel_json.py   schema check for vercel.json (used by CI)
 ```
@@ -115,6 +116,13 @@ cd etl && uvicorn api:app --port 8000  # etl service locally (or `vercel dev` fr
   club per season; for NB I–III seasons the first team beats a "… II." reserve side in multi-club profile rows.
 - Migration 003's `hunscout_web` password comes from `WEB_DB_PASSWORD` (session GUC `hunscout.web_password`), else
   random-strong: never hardcode a weak role password (Neon rejects it at COMMIT and the whole run rolls back).
+- **Loading is set-based:** `load_match_report` writes a whole lineup in ~8 statements (unnest arrays), never one
+  query per player — every statement is a network round trip to Neon (per-row writes made a match take 10–12 s).
+  `tests/test_db_load.py` runs against `TEST_DATABASE_URL` (CI service container).
+- **Geolocation:** aliases (Budapest districts, ETO/ZTE/DVTK…) → hand-checked `GAZETTEER` → every Hungarian
+  settlement in `etl/data/hu_settlements.csv` (Wikidata, CC0), strict whole-word/adjective match. `analytics.run()`
+  locates clubs still missing coordinates, so growing the gazetteer fixes existing clubs on the next run.
+- A sync run still `running` after 7 h was killed from outside; the next `start_sync` marks it failed.
 - Migrations run through `exec_driver_sql` with `%` doubled (psycopg placeholder escaping) — `%` in SQL is fine.
 
 ## Design (neo-brutalist stadium)

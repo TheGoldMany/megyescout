@@ -14,6 +14,15 @@ jobs:
     name: ETL tests (pytest)
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: etl } }
+    services:
+      postgres: # for the set-based loading test (tests/test_db_load.py)
+        image: postgres:16
+        env: { POSTGRES_DB: etltest, POSTGRES_USER: postgres, POSTGRES_PASSWORD: postgres }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d etltest" --health-interval 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/etltest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

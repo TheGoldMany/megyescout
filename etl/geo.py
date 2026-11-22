@@ -1,13 +1,17 @@
-"""Club geolocation: map a club name to a town in the pilot region.
+"""Club geolocation: map a club name to a town.
 
-MLSZ pages carry no coordinates, so clubs are resolved against a gazetteer of
-settlements within ~150 km of Lajosmizse. Matching is accent-insensitive and
-prefers the longest town name found in the club name ("Kiskunfélegyházi" must
-not resolve to "Kiskun...").
+MLSZ pages carry no coordinates, so clubs are resolved in three steps:
+1. ALIASES: abbreviations and Budapest district/club names that hide the town (ETO, ZTE, Esmtk, "III. Ker.").
+2. GAZETTEER: hand-checked towns of the pilot region (loose stem match, as before).
+3. data/hu_settlements.csv: every Hungarian settlement (3177, KSH code + coordinates from Wikidata, CC0),
+   matched strictly as a whole word or its adjective form (Göd -> "Gödi", Halásztelek -> "Halásztelki").
+Matching is accent-insensitive and prefers the longest name ("Tatabánya" before "Tata").
 """
 from __future__ import annotations
 
+import csv
 import math
+import os
 import re
 import unicodedata
 
@@ -193,6 +197,52 @@ GAZETTEER: dict[str, tuple[float, float, str]] = {
 
 # Common Hungarian club-name abbreviations that hide the town name.
 ALIASES: dict[str, str] = {
+    # Budapest districts, neighbourhoods and clubs (district precision is irrelevant for a 70 km radius)
+    "ker.": "Budapest",
+    "kerületi": "Budapest",
+    "esmtk": "Budapest",
+    "újpalota": "Budapest",
+    "testvériség": "Budapest",
+    "kelen": "Budapest",
+    "ikarus": "Budapest",
+    "pestszentimrei": "Budapest",
+    "pestszentimre": "Budapest",
+    "budatétény": "Budapest",
+    "nagytétényi": "Budapest",
+    "ferencvárosi": "Budapest",
+    "pénzügyőr": "Budapest",
+    "fővárosi": "Budapest",
+    "szabadkikötő": "Budapest",
+    "ludovika": "Budapest",
+    "építők": "Budapest",
+    "tfse": "Budapest",
+    "reac": "Budapest",
+    "unione": "Budapest",
+    "szent istván se": "Budapest",
+    # well-known club abbreviations elsewhere
+    "eto": "Győr",
+    "dac nádorváros": "Győr",
+    "zte": "Zalaegerszeg",
+    "andráshida": "Zalaegerszeg",
+    "dvtk": "Miskolc",
+    "deac": "Debrecen",
+    "haladás": "Szombathely",
+    "pmfc": "Pécs",
+    "peac": "Pécs",
+    "sbtc": "Salgótarján",
+    "puskás akadémia": "Felcsút",
+    "videoton": "Székesfehérvár",
+    "fehérvár": "Székesfehérvár",
+    "jvse": "Jászberény",
+    "mezőmegyer": "Békéscsaba",
+    "kaposfüred": "Kaposvár",
+    "dorozsma": "Szeged",
+    "majosi": "Bonyhád",
+    "miklósi": "Szigetszentmiklós",
+    "aranyszarvas": "Szarvas",
+    "halas": "Kiskunhalas",
+    "nagybátonyi": "Bátonyterenye",
+    "koppánymonostori": "Komárom",
     "kte": "Kecskemét",
     "kecskeméti": "Kecskemét",
     "kecskemeti": "Kecskemét",
@@ -239,8 +289,42 @@ def _fold(s: str) -> str:
     return re.sub(r"\s+", " ", s.lower()).strip()
 
 
+def _load_settlements() -> dict[str, tuple[float, float, str]]:
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "hu_settlements.csv")
+    out: dict[str, tuple[float, float, str]] = {}
+    with open(path, encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            if "kerülete" in row["name"]:
+                continue  # Budapest districts are reached through ALIASES
+            out[row["name"]] = (float(row["lat"]), float(row["lng"]), row["county"] or "Budapest")
+    return out
+
+
+SETTLEMENTS = _load_settlements()
+# every known town: the hand-checked gazetteer wins over the generated list
+TOWNS: dict[str, tuple[float, float, str]] = {**SETTLEMENTS, **GAZETTEER}
+
 _FOLDED_TOWNS = sorted(((_fold(t), t) for t in GAZETTEER), key=lambda x: -len(x[0]))
 _FOLDED_ALIASES = sorted(((_fold(a), t) for a, t in ALIASES.items()), key=lambda x: -len(x[0]))
+_VOWELS = set("aeiou")
+
+
+def _adjective_forms(ft: str) -> set[str]:
+    """Folded town name plus its usual -i adjective forms (Göd -> godi, Halásztelek -> halasztelki)."""
+    forms = {ft, ft + "i"}
+    if len(ft) > 3 and ft[-2] in _VOWELS and ft[-1] not in _VOWELS:
+        forms.add(ft[:-2] + ft[-1] + "i")  # vowel drop: telek -> telki, Eger -> egri
+    if ft[-1] in "ae":
+        forms.add(ft[:-1] + "i")  # Kiskunfélegyháza -> kiskunfelegyhazi
+    return forms
+
+
+_SETTLEMENT_FORMS = sorted(
+    ((form, town) for town in SETTLEMENTS for form in _adjective_forms(_fold(town))),
+    key=lambda x: -len(x[0]),
+)
+_WORD_EDGE_L = r"(?:^|[\s\-.('\"/])"
+_WORD_EDGE_R = r"(?=$|[\s\-.,)'\"/])"
 
 
 def resolve_town(club_name: str) -> str | None:
@@ -255,6 +339,10 @@ def resolve_town(club_name: str) -> str | None:
         stem = ft[:-1] if len(ft) > 5 else ft
         if re.search(r"(?:^|[\s\-.(])" + re.escape(stem), folded):
             return town
+    for form, town in _SETTLEMENT_FORMS:
+        # strict: a whole word (or hyphen part); short names like "Bő" must not match inside other words
+        if len(form) >= 3 and form in folded and re.search(_WORD_EDGE_L + re.escape(form) + _WORD_EDGE_R, folded):
+            return town
     return None
 
 
@@ -262,7 +350,7 @@ def geolocate(club_name: str) -> tuple[str | None, float | None, float | None, s
     town = resolve_town(club_name)
     if not town:
         return None, None, None, None
-    lat, lng, county = GAZETTEER[town]
+    lat, lng, county = TOWNS[town]
     return town, lat, lng, county
 
 

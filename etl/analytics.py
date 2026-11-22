@@ -464,13 +464,14 @@ def persist(conn, metrics: pd.DataFrame, positions: pd.DataFrame, sims: list[tup
 
 def run() -> dict:
     with db.engine().begin() as conn:
+        located = db.fill_missing_coordinates(conn)
         apps, matches, players = _load(conn)
         metrics, positions = compute(apps, matches, players)
         sims = similarities(metrics)
         persist(conn, metrics, positions, sims)
         market_summary = market.build(conn, metrics)
         conn.execute(text("REFRESH MATERIALIZED VIEW mv_player_explorer"))
-    summary = {"metric_rows": len(metrics), "players_positioned": len(positions), "similarity_pairs": len(sims),
+    summary = {"clubs_located": located, "metric_rows": len(metrics), "players_positioned": len(positions), "similarity_pairs": len(sims),
                **market_summary}
     log.info("analytics done: %s", summary)
     return summary

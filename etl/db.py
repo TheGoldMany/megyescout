@@ -106,34 +106,24 @@ def upsert_player(conn: Connection, mlsz_player_id: str, full_name: str, club_id
     """), dict(mid=mlsz_player_id, name=full_name.title(), club=club_id)).scalar_one()
 
 
-def _write_appearance(conn: Connection, match_id: UUID, club_id: UUID, app: PlayerAppearance) -> UUID:
-    player_id = upsert_player(conn, app.mlsz_player_id, app.full_name, club_id)
-    conn.execute(text("""
-        INSERT INTO match_appearances (match_id, player_id, club_id, shirt_number, is_starter, minute_in, minute_out,
-                                       minutes_played, goals, own_goals, yellow_cards, red_cards)
-        VALUES (:m, :p, :c, :n, :s, :mi, :mo, :mp, :g, :og, :y, :r)
-        ON CONFLICT (match_id, player_id) DO UPDATE SET
-            club_id = EXCLUDED.club_id, shirt_number = EXCLUDED.shirt_number, is_starter = EXCLUDED.is_starter,
-            minute_in = EXCLUDED.minute_in, minute_out = EXCLUDED.minute_out, minutes_played = EXCLUDED.minutes_played,
-            goals = EXCLUDED.goals, own_goals = EXCLUDED.own_goals,
-            yellow_cards = EXCLUDED.yellow_cards, red_cards = EXCLUDED.red_cards
-    """), dict(m=match_id, p=player_id, c=club_id, n=app.shirt_number, s=app.is_starter, mi=app.minute_in,
-               mo=app.minute_out, mp=app.minutes_played, g=app.goals, og=app.own_goals, y=app.yellow_cards,
-               r=app.red_cards))
-    events: list[tuple[int | None, str]] = [(m, "goal") for m in app.goal_minutes]
-    if not app.is_starter:
-        events.append((app.minute_in, "sub_in"))
-    if app.minute_out < 90:
-        events.append((app.minute_out, "sub_out" if not app.red_cards else "red"))
-    for minute, kind in events:
-        conn.execute(text("""
-            INSERT INTO match_events (match_id, player_id, club_id, minute, event_type)
-            VALUES (:m, :p, :c, :min, :t) ON CONFLICT DO NOTHING
-        """), dict(m=match_id, p=player_id, c=club_id, min=minute, t=kind))
-    return player_id
+def _upsert_players(conn: Connection, rows: list[tuple[str, str, UUID]]) -> dict[str, UUID]:
+    """One round trip for a whole lineup: (mlsz_player_id, full_name, club_id) -> {mlsz_player_id: id}."""
+    if not rows:
+        return {}
+    return {r[0]: r[1] for r in conn.execute(text("""
+        INSERT INTO players (mlsz_player_id, full_name, current_club_id)
+        SELECT * FROM unnest(CAST(:mids AS varchar[]), CAST(:names AS text[]), CAST(:clubs AS uuid[]))
+        ON CONFLICT (mlsz_player_id) DO UPDATE SET
+            full_name = EXCLUDED.full_name,
+            current_club_id = COALESCE(EXCLUDED.current_club_id, players.current_club_id),
+            updated_at = now()
+        RETURNING mlsz_player_id, id
+    """), dict(mids=[r[0] for r in rows], names=[r[1].title() for r in rows], clubs=[r[2] for r in rows]))}
 
 
 def load_match_report(conn: Connection, report: MatchReport, competition_id: UUID) -> UUID:
+    """Write a match with its lineups in a handful of set-based statements (each statement is a network
+    round trip to a hosted database, so per-player queries made a match take 10+ seconds)."""
     home_id = upsert_club(conn, report.home.mlsz_club_id, report.home.name, report.home.logo_url)
     away_id = upsert_club(conn, report.away.mlsz_club_id, report.away.name, report.away.logo_url)
     match_id = conn.execute(text("""
@@ -150,22 +140,61 @@ def load_match_report(conn: Connection, report: MatchReport, competition_id: UUI
                venue=report.venue, h=home_id, a=away_id, hg=report.home_goals, ag=report.away_goals,
                status=report.status)).scalar_one()
 
+    # one row per player (a duplicate in the report keeps its last entry, as the old per-row upserts did)
+    lineup: dict[str, tuple[UUID, PlayerAppearance]] = {}
+    for club_id, players in ((home_id, report.home_players), (away_id, report.away_players)):
+        for app in players:
+            lineup[app.mlsz_player_id] = (club_id, app)
+    ids = _upsert_players(conn, [(mid, app.full_name, club_id) for mid, (club_id, app) in lineup.items()])
+
+    apps = []
+    events: list[tuple[UUID, UUID, int | None, str]] = []
+    for mid, (club_id, app) in lineup.items():
+        pid = ids[mid]
+        # substitution direction: substitute -> the teammate they replaced (same club only)
+        partner = lineup.get(app.partner_mlsz_player_id or "")
+        replaced = ids[app.partner_mlsz_player_id] if (not app.is_starter and partner and partner[0] == club_id) else None
+        apps.append((pid, club_id, app, replaced))
+        evs: list[tuple[int | None, str]] = [(m, "goal") for m in app.goal_minutes]
+        if not app.is_starter:
+            evs.append((app.minute_in, "sub_in"))
+        if app.minute_out < 90:
+            evs.append((app.minute_out, "sub_out" if not app.red_cards else "red"))
+        events.extend((pid, club_id, m, k) for m, k in dict.fromkeys(evs))
+
     # Late disciplinary corrections: rewrite the lineup wholesale.
     conn.execute(text("DELETE FROM match_events WHERE match_id = :m"), {"m": match_id})
-    keep: list[UUID] = []
-    for club_id, players in ((home_id, report.home_players), (away_id, report.away_players)):
-        ids: dict[str, UUID] = {}
-        for app in players:
-            ids[app.mlsz_player_id] = _write_appearance(conn, match_id, club_id, app)
-        keep.extend(ids.values())
-        # substitution direction: substitute -> the teammate they replaced
-        for app in players:
-            replaced = ids.get(app.partner_mlsz_player_id or "") if not app.is_starter else None
-            conn.execute(text("UPDATE match_appearances SET replaced_player_id = :r WHERE match_id = :m AND player_id = :p"),
-                         {"r": replaced, "m": match_id, "p": ids[app.mlsz_player_id]})
-    if keep:
+    if apps:
+        conn.execute(text("""
+            INSERT INTO match_appearances (match_id, player_id, club_id, shirt_number, is_starter, minute_in,
+                                           minute_out, minutes_played, goals, own_goals, yellow_cards, red_cards,
+                                           replaced_player_id)
+            SELECT CAST(:m AS uuid), * FROM unnest(
+                CAST(:p AS uuid[]), CAST(:c AS uuid[]), CAST(:n AS int[]), CAST(:s AS boolean[]), CAST(:mi AS int[]),
+                CAST(:mo AS int[]), CAST(:mp AS int[]), CAST(:g AS int[]), CAST(:og AS int[]), CAST(:y AS int[]),
+                CAST(:r AS int[]), CAST(:rp AS uuid[]))
+            ON CONFLICT (match_id, player_id) DO UPDATE SET
+                club_id = EXCLUDED.club_id, shirt_number = EXCLUDED.shirt_number, is_starter = EXCLUDED.is_starter,
+                minute_in = EXCLUDED.minute_in, minute_out = EXCLUDED.minute_out,
+                minutes_played = EXCLUDED.minutes_played, goals = EXCLUDED.goals, own_goals = EXCLUDED.own_goals,
+                yellow_cards = EXCLUDED.yellow_cards, red_cards = EXCLUDED.red_cards,
+                replaced_player_id = EXCLUDED.replaced_player_id
+        """), dict(m=match_id, p=[a[0] for a in apps], c=[a[1] for a in apps],
+                   n=[a[2].shirt_number for a in apps], s=[a[2].is_starter for a in apps],
+                   mi=[a[2].minute_in for a in apps], mo=[a[2].minute_out for a in apps],
+                   mp=[a[2].minutes_played for a in apps], g=[a[2].goals for a in apps],
+                   og=[a[2].own_goals for a in apps], y=[a[2].yellow_cards for a in apps],
+                   r=[a[2].red_cards for a in apps], rp=[a[3] for a in apps]))
         conn.execute(text("DELETE FROM match_appearances WHERE match_id = :m AND NOT (player_id = ANY(:keep))"),
-                     {"m": match_id, "keep": keep})
+                     {"m": match_id, "keep": [a[0] for a in apps]})
+    if events:
+        conn.execute(text("""
+            INSERT INTO match_events (match_id, player_id, club_id, minute, event_type)
+            SELECT CAST(:m AS uuid), * FROM unnest(CAST(:p AS uuid[]), CAST(:c AS uuid[]), CAST(:min AS int[]),
+                                                   CAST(:t AS varchar[]))
+            ON CONFLICT DO NOTHING
+        """), dict(m=match_id, p=[e[0] for e in events], c=[e[1] for e in events], min=[e[2] for e in events],
+                   t=[e[3] for e in events]))
     return match_id
 
 
@@ -210,8 +239,29 @@ def load_player_profile(conn: Connection, profile: PlayerProfile) -> None:
 # sync bookkeeping
 # ---------------------------------------------------------------------------
 def start_sync(conn: Connection, source: str, mode: str) -> UUID:
+    # a run killed from outside (cancelled CI job, function timeout) never reaches finish_sync: close it here
+    conn.execute(text("""
+        UPDATE sync_runs SET status = 'failed', finished_at = now(),
+               error = COALESCE(error, 'megszakadt (a futás nem fejeződött be)')
+        WHERE status = 'running' AND started_at < now() - interval '7 hours'
+    """))
     return conn.execute(text("INSERT INTO sync_runs (source, mode) VALUES (:s, :m) RETURNING id"),
                         {"s": source, "m": mode}).scalar_one()
+
+
+def fill_missing_coordinates(conn: Connection) -> int:
+    """Locate clubs that have no coordinates yet (e.g. after the gazetteer grew). Returns how many were fixed."""
+    fixed = 0
+    for r in conn.execute(text("SELECT id, name FROM clubs WHERE latitude IS NULL OR longitude IS NULL")).all():
+        town, lat, lng, county = geolocate(r.name)
+        if town:
+            conn.execute(text("""
+                UPDATE clubs SET city = COALESCE(city, :t), county = COALESCE(county, :c),
+                       latitude = :lat, longitude = :lng, updated_at = now()
+                WHERE id = :id
+            """), dict(t=town, c=county, lat=lat, lng=lng, id=r.id))
+            fixed += 1
+    return fixed
 
 
 def finish_sync(conn: Connection, run_id: UUID, *, matches: int, players: int, error: str | None = None,

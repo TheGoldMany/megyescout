@@ -42,14 +42,14 @@ async def _profiles(stale_days: int, limit: int | None) -> int:
 def cmd_geo(args) -> None:
     """Club coordinates drive the distance filter; clubs without them silently drop out of it."""
     from sqlalchemy import text
-    from geo import GAZETTEER, geolocate
+    from geo import TOWNS, geolocate
 
     with db.engine().begin() as conn:
         if args.set:
             if args.town:
-                if args.town not in GAZETTEER:
+                if args.town not in TOWNS:
                     raise SystemExit(f"unknown town {args.town!r}; use --lat/--lng or add it to geo.GAZETTEER")
-                lat, lng, county = GAZETTEER[args.town]
+                lat, lng, county = TOWNS[args.town]
                 town = args.town
             elif args.lat is not None and args.lng is not None:
                 lat, lng, county, town = args.lat, args.lng, None, None

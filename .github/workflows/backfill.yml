@@ -23,6 +23,11 @@ on:
         required: true
         default: true
         type: boolean
+      analytics_only:
+        description: "Csak elemzés: klubok helymeghatározása és újraszámolás, letöltés nélkül"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -42,6 +47,7 @@ jobs:
       ONLY: ${{ inputs.only }}
       SEASON: ${{ inputs.season }}
       PROFILES: ${{ inputs.profiles }}
+      ANALYTICS_ONLY: ${{ inputs.analytics_only }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -53,6 +59,10 @@ jobs:
             exit 1
           fi
           pip install -r requirements.txt
+          if [ "$ANALYTICS_ONLY" = "true" ]; then
+            python cli.py analytics   # also locates clubs that have no coordinates yet
+            exit 0
+          fi
           # stop starting requests after 320 min so analytics still runs inside the 350-min job limit;
           # --skip-known lets the next run continue instead of re-fetching stored matches
           args=(scrape --mode backfill --season "$SEASON" --budget-minutes 320 --skip-known)
