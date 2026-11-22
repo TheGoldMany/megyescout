@@ -692,7 +692,13 @@ export async function getHome() {
       [season],
     )
   )[0];
-  return { season, top, risers, clubs, transfers: transfers.rows, transferCount: transfers.total, leagues, totals };
+  // the pilot club (first senior team, not a reserve side) for the "own club" shortcut
+  const pilot = (
+    await query<{ id: string; name: string }>(
+      `SELECT id, name FROM clubs WHERE name ILIKE 'Lajosmizse%' ORDER BY (name ~* ' II\.?$'), length(name) LIMIT 1`,
+    )
+  )[0] ?? null;
+  return { season, top, risers, clubs, transfers: transfers.rows, transferCount: transfers.total, leagues, totals, pilot };
 }
 
 export async function getLeagues(): Promise<LeagueSummary[]> {

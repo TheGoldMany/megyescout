@@ -31,7 +31,7 @@ web/                  Next.js 15 App Router, TypeScript, Tailwind v4, shadcn/ui-
   src/lib/cron.ts     schedule-run logic: per-league etl calls with time budgets (Hobby: 300 s per function)
   src/app/api/cron/sync/[target]  target of the 22 Vercel schedules (one league each); CRON_SECRET-protected
   src/app/            / (home) · /explorer · /players/[id] · /clubs/[id] · /leagues(/[id]) · /transfers ·
-                      /shortlist (+ /shortlist/export CSV) · /compare · /data
+                      /shortlist (+ /shortlist/export CSV) · /compare · /data · /modszertan (data provenance)
   src/components/stadium.tsx  design-system pieces: SectorHeading, ValueTag, ClubCrest, Grandstand, Pitch,
                       StandingsTable, TransferList
   e2e/                Playwright specs (need a demo-seeded DB); playwright.config.ts starts `npm run start`
@@ -124,6 +124,15 @@ cd etl && uvicorn api:app --port 8000  # etl service locally (or `vercel dev` fr
   locates clubs still missing coordinates, so growing the gazetteer fixes existing clubs on the next run.
 - A sync run still `running` after 7 h was killed from outside; the next `start_sync` marks it failed.
 - Migrations run through `exec_driver_sql` with `%` doubled (psycopg placeholder escaping) — `%` in SQL is fine.
+
+- **Official data only (client rule):** everything shown is copied from MLSZ or calculated from it with a fixed
+  formula; nothing random, invented or typed in by hand. Calculated values are labelled as such ("becsült" value,
+  "becsült poszt") and explained on /modszertan — keep that page in sync with market.py / analytics.py. Transfer
+  fees, wages and assists have no official source and are never shown; a transfer row's amount is the player's
+  estimated value, labelled "nem díj".
+- **Audiences:** scouts, club executives and fans browsing. Home = search box + four quick starts (nearby players,
+  youth-rule players, own club, tables) before the grandstand. Phones get a labelled bottom tab bar; /data and
+  /modszertan live in the footer, not the main nav.
 
 ## Design (neo-brutalist stadium)
 - **No rounded corners or edges anywhere** (client rule): global `border-radius: 0 !important`, square line caps on

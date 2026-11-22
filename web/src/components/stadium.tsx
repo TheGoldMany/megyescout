@@ -42,16 +42,18 @@ export function ValueTag({
   prev,
   size = "md",
   className,
+  title = "Becsült piaci érték: a Megyescout számítása az MLSZ-jegyzőkönyvekből, nem hivatalos ár",
 }: {
   value: number | null | undefined;
   prev?: number | null;
   size?: "sm" | "md" | "lg";
   className?: string;
+  title?: string;
 }) {
   const delta = fmtDeltaPct(value ?? null, prev ?? null);
   const up = value && prev ? value >= prev : null;
   return (
-    <span className={cn("inline-flex items-baseline gap-1.5 whitespace-nowrap", className)}>
+    <span className={cn("inline-flex items-baseline gap-1.5 whitespace-nowrap", className)} title={title}>
       <span
         className={cn(
           "border-2 border-black bg-black px-1.5 font-display font-bold text-accent",
@@ -370,6 +372,16 @@ export function TransferList({
   if (!rows.length) return <p className="nb-box p-4 text-sm text-muted-foreground">Nincs rögzített átigazolás.</p>;
   return (
     <ul className="divide-y-2 divide-black border-[3px] border-black bg-white shadow-[4px_4px_0_#000]">
+      {!perspective && (
+        <li
+          aria-hidden
+          className="hidden grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)_auto] gap-x-3 bg-black px-3 py-1.5 text-xs font-semibold text-white sm:grid"
+        >
+          <span>Játékos</span>
+          <span>Honnan ▶ hová</span>
+          <span>Becsült érték (nem díj)</span>
+        </li>
+      )}
       {rows.map((t) => (
         <li
           key={t.id}
@@ -408,7 +420,12 @@ export function TransferList({
               <ClubLink id={t.to_club_id} name={t.to_club} className="truncate" />
             </div>
           )}
-          <ValueTag value={t.value_huf} size="sm" className="justify-self-end" />
+          <ValueTag
+            value={t.value_huf}
+            size="sm"
+            className="justify-self-end"
+            title="A játékos becsült piaci értéke az érkezés szezonjában. Átigazolási díjat nem mutatunk: ezek nem nyilvánosak."
+          />
         </li>
       ))}
     </ul>

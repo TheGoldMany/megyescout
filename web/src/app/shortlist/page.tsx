@@ -8,7 +8,7 @@ import { RecentForm } from "@/components/recent-form";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Igazolási tábla" };
+export const metadata = { title: "Figyelőlista" };
 
 export default async function ShortlistPage({ searchParams }: { searchParams: Promise<{ group?: string }> }) {
   const session = await sessionOrLogin("/shortlist");
@@ -28,7 +28,7 @@ export default async function ShortlistPage({ searchParams }: { searchParams: Pr
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight sm:text-xl">Lajosmizsei VLC · Igazolási tábla</h1>
+          <h1 className="text-lg font-semibold tracking-tight sm:text-xl">Lajosmizsei VLC figyelőlistája</h1>
           <p className="text-xs text-muted-foreground sm:text-sm">
             {rows.length} megfigyelt játékos · a jegyzetek csak a klub stábja számára láthatók
           </p>

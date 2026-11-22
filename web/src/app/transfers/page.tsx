@@ -35,8 +35,11 @@ export default async function TransfersPage({
       <div>
         <h1 className="font-display text-4xl font-bold tracking-tight sm:text-5xl">Átigazolások</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Klubváltás, ha egy játékos fő felnőtt csapata eltér az előző szezonbelitől. Az érték a játékos becsült piaci
-          értéke az érkezése szezonjában; az átigazolási díjak nem nyilvánosak.
+          Klubváltás, ha egy játékos fő felnőtt csapata eltér az előző szezonbelitől (az MLSZ adatai alapján). Az összeg
+          a játékos becsült piaci értéke az érkezése szezonjában, nem átigazolási díj: a díjak nem nyilvánosak.{" "}
+          <Link href="/modszertan" className="nb-mark font-semibold underline decoration-2 underline-offset-4">
+            Hogyan számoljuk?
+          </Link>
         </p>
       </div>
 

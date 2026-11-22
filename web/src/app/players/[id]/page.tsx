@@ -143,8 +143,10 @@ export default async function PlayerPage({
                 <PositionBadge pos={p.primary_position} secondary={p.secondary_position} />
                 {p.primary_position && (
                   <span>
-                    {POSITION_LABEL[p.primary_position]}
-                    {p.position_confidence ? ` · ${Math.round(p.position_confidence * 100)}% biztos` : ""}
+                    {POSITION_LABEL[p.primary_position]}{" "}
+                    <Link href="/modszertan#poszt" className="nb-mark underline decoration-dotted underline-offset-4" title="Az MLSZ nem közli a posztot: mezszámból, gólokból és cserékből becsüljük">
+                      (becsült poszt{p.position_confidence ? `, ${Math.round(p.position_confidence * 100)}% bizonyosság` : ""})
+                    </Link>
                   </span>
                 )}
               </span>
@@ -161,7 +163,9 @@ export default async function PlayerPage({
           </div>
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <div className="text-right">
-              <div className="text-[11px] text-muted-foreground">Becsült piaci érték</div>
+              <Link href="/modszertan" className="nb-mark text-[11px] text-muted-foreground underline decoration-dotted underline-offset-4">
+                Becsült piaci érték
+              </Link>
               <ValueTag value={p.market_value_huf} prev={p.prev_market_value_huf} size="lg" />
               {peak > 0 && <div className="mt-0.5 text-[11px] text-muted-foreground">Csúcs: {fmtValue(peak)}</div>}
             </div>

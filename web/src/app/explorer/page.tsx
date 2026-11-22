@@ -8,7 +8,7 @@ import { DEFAULT_MAX_KM, parseFilters, type RawParams } from "@/lib/filters";
 import { sessionOrLogin } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Kereső" };
+export const metadata = { title: "Játékoskereső" };
 
 export default async function ExplorerPage({ searchParams }: { searchParams: Promise<RawParams> }) {
   const sp = await searchParams;

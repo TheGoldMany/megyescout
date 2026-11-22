@@ -21,3 +21,22 @@ export function NavLink({ href, icon, children }: { href: string; icon: React.Re
     </Link>
   );
 }
+
+// Phone tab bar item: icon above a short label; the open tab is black.
+export function TabLink({ href, icon, children }: { href: string; icon: React.ReactNode; children: React.ReactNode }) {
+  const path = usePathname();
+  const active = path.startsWith(href);
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex h-16 flex-col items-center justify-center gap-1 border-r-[3px] border-black text-xs font-bold last:border-r-0",
+        active ? "bg-black text-white" : "bg-white text-black active:bg-accent",
+      )}
+    >
+      {icon}
+      {children}
+    </Link>
+  );
+}

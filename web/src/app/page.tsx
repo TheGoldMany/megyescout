@@ -42,6 +42,42 @@ export default async function HomePage() {
             ))}
           </dl>
         </div>
+        {/* start here: a search box, then the four things people come for */}
+        <form action="/explorer" role="search" className="nb-box flex items-stretch gap-0 p-0">
+          <label htmlFor="home-q" className="sr-only">Keresés</label>
+          <input
+            id="home-q"
+            name="q"
+            placeholder="Játékos, klub vagy település neve"
+            className="min-w-0 flex-1 bg-white px-4 py-3 text-base font-semibold placeholder:font-normal placeholder:text-[#464b52] focus:bg-[#fff6cc] focus:outline-none"
+          />
+          <button className="border-l-[3px] border-black bg-accent px-5 font-display text-xl font-extrabold hover:bg-black hover:text-accent">
+            Keresés
+          </button>
+        </form>
+        <nav aria-label="Gyors indulás" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              href: "/explorer",
+              title: "Játékosok a közelben",
+              text: "Mindenki, aki 70 km-en belül játszik Lajosmizsétől, érték szerint rendezve.",
+            },
+            {
+              href: `/explorer?byMin=${seasonStart - 20}&byMax=${seasonStart - 18}`,
+              title: "Fiatalok a szabályhoz",
+              text: `${seasonStart - 20} és ${seasonStart - 18} között született játékosok a környékről.`,
+            },
+            h.pilot
+              ? { href: `/clubs/${h.pilot.id}`, title: "A mi keretünk", text: `${clubCase(h.pilot.name)}: játékosok, tabella, átigazolások.` }
+              : { href: "/shortlist", title: "Figyelőlista", text: "A kiszemelt játékosok és a jegyzetek egy helyen." },
+            { href: "/leagues", title: "Tabellák", text: "Minden bajnokság állása, góllövőlistája és a keretek értéke." },
+          ].map((t) => (
+            <Link key={t.title} href={t.href} className="nb-press block border-[3px] border-black bg-white p-3">
+              <span className="font-display text-2xl font-extrabold leading-tight">{t.title}</span>
+              <span className="mt-1 block text-sm text-muted-foreground">{t.text}</span>
+            </Link>
+          ))}
+        </nav>
         {h.top.length > 0 ? (
           <Grandstand players={h.top} seasonStart={seasonStart} />
         ) : (
@@ -92,7 +128,7 @@ export default async function HomePage() {
           <SectorHeading
             sector="B"
             title="Friss átigazolások"
-            sub={`Klubváltások a ${h.season} szezon elején`}
+            sub={`Klubváltások a ${h.season} szezon elején. Az összeg becsült piaci érték, nem átigazolási díj.`}
             action={<Link href="/transfers" className="nb-press inline-block border-[3px] border-black bg-accent px-2 py-0.5 font-bold">Összes átigazolás</Link>}
           />
           <TransferList rows={h.transfers} />

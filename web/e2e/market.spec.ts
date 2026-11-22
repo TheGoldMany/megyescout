@@ -59,3 +59,13 @@ test("transfers page and player value history", async ({ page }) => {
   await expect(page.getByText("Piaci érték alakulása")).toBeVisible();
   await expectNoRoundedCorners(page);
 });
+
+test("data provenance: methodology page, transfer values are never presented as fees", async ({ page }) => {
+  await page.goto("/transfers");
+  await expect(page.getByText("Becsült érték (nem díj)")).toBeVisible();
+  await page.getByRole("link", { name: "Hogyan számoljuk?" }).click();
+  await expect(page.getByRole("heading", { name: "Honnan jönnek az adatok?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Hivatalos adatok" })).toBeVisible();
+  await expect(page.getByText("Átigazolási díjak, fizetések, szerződések")).toBeVisible();
+  await expectNoRoundedCorners(page);
+});
