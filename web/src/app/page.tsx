@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getHome } from "@/lib/queries";
 import { sessionOrLogin } from "@/lib/session";
-import { ClubCrest, ClubLink, Grandstand, SectorHeading, TransferList, ValueTag } from "@/components/stadium";
+import { ClubCrest, ClubLink, SectorHeading, TopPlayers, TransferList, ValueTag } from "@/components/stadium";
 import { TIER_LABEL } from "@/lib/labels";
 import { clubCase, fmtNum, fmtValue, titleCase } from "@/lib/utils";
 
@@ -79,7 +79,7 @@ export default async function HomePage() {
           ))}
         </nav>
         {h.top.length > 0 ? (
-          <Grandstand players={h.top} seasonStart={seasonStart} />
+          <TopPlayers players={h.top} seasonStart={seasonStart} season={h.season} />
         ) : (
           <div className="nb-box p-5">
             <h2 className="font-display text-2xl font-extrabold">A lelátó még üres</h2>

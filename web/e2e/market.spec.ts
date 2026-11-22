@@ -16,13 +16,15 @@ async function expectNoRoundedCorners(page: Page) {
   expect(rounded).toEqual([]);
 }
 
-test("home: grandstand of market values, clubs, transfers, leagues", async ({ page }) => {
+test("home: top-15 ranking by market value, clubs, transfers, leagues", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Ki mennyit ér");
-  const stand = page.getByRole("region", { name: "A legértékesebb játékosok" });
-  await expect(stand.locator("li")).toHaveCount(15);
-  // values descend through the tiers
-  const values = (await stand.locator("li span.text-accent").allInnerTexts()).map((t) =>
+  await expect(page.getByRole("heading", { name: "A 15 legértékesebb játékos" })).toBeVisible();
+  const players = page.getByRole("list", { name: "A legértékesebb játékosok" }).locator("li a");
+  await expect(players).toHaveCount(15);
+  await expect(page.getByText("karéj")).toHaveCount(0); // no stadium jargon that needs explaining
+  // values descend with the rank
+  const values = (await players.locator("span.text-accent").allInnerTexts()).map((t) =>
     t.includes("M") ? parseFloat(t.replace(",", ".")) * 1e6 : parseFloat(t) * 1e3,
   );
   expect([...values].sort((a, b) => b - a)).toEqual(values);

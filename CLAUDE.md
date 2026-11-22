@@ -32,7 +32,7 @@ web/                  Next.js 15 App Router, TypeScript, Tailwind v4, shadcn/ui-
   src/app/api/cron/sync/[target]  target of the 22 Vercel schedules (one league each); CRON_SECRET-protected
   src/app/            / (home) · /explorer · /players/[id] · /clubs/[id] · /leagues(/[id]) · /transfers ·
                       /shortlist (+ /shortlist/export CSV) · /compare · /data · /modszertan (data provenance)
-  src/components/stadium.tsx  design-system pieces: SectorHeading, ValueTag, ClubCrest, Grandstand, Pitch,
+  src/components/stadium.tsx  design-system pieces: SectorHeading, ValueTag, ClubCrest, TopPlayers, Pitch,
                       StandingsTable, TransferList
   e2e/                Playwright specs (need a demo-seeded DB); playwright.config.ts starts `npm run start`
 .github/workflows/    ci.yml: pytest · vercel.json schema · tsc/lint/build · E2E (fresh Postgres + seed)
@@ -144,7 +144,10 @@ cd etl && uvicorn api:app --port 8000  # etl service locally (or `vercel dev` fr
   never yellow text on concrete). Status text uses the dark 700/800 shades for contrast.
 - Palette: concrete `#D6D8D1`, ink `#000000`, board `#FFFFFF`, pitch `#00A862`, floodlight/scoreboard `#FFC414`,
   seat red `#FF4B3E`. Type: Barlow (body) + Barlow Condensed (headings, all numbers, extrabold).
-- Motifs: black/yellow truss roof + square floodlight heads in the header (`.truss`, `.lamps`), sector boards
-  (letter = in-page anchor, title in sentence case, no all-caps labels), scoreboard values (yellow digits on black),
-  the red-seated home grandstand (top values in three tiers) as the single bold element, black footer.
+- Motifs: black/yellow truss roof + square floodlight heads in the header (`.truss`, `.lamps`), section headings
+  with a yellow marker (title in sentence case, no all-caps labels), scoreboard values (yellow digits on black),
+  the home "A 15 legértékesebb játékos" ranking (top 3 cards + numbered list) as the single bold element, black footer.
+- **Understandable first (client rule):** no decoration that needs explaining — the stadium metaphor stays visual
+  (truss, floodlights, colours), never in words ("karéj" tiers and sector letters were removed for confusing people).
+  Positions are written out in full in lists ("Védő", not "VÉD").
   Dense tables on desktop, card list + collapsible filters on phones (sideline use).

@@ -1,11 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn, clubCase, fmtDeltaPct, fmtValue, titleCase } from "@/lib/utils";
-import { POSITION_LABEL, POSITION_SHORT, type Position } from "@/lib/labels";
+import { POSITION_LABEL, type Position } from "@/lib/labels";
 
 /* --------------------------------------------------------------------------------------------
- * Sector board: stadium wayfinding. The letter is the page's sector (and an in-page anchor);
- * the title is plain sentence case; a steel rule runs to the right edge like a stand's fascia.
+ * Section heading: a yellow marker, the title in plain sentence case and a black rule to the right edge.
+ * `sector` only names the in-page anchor (#szektor-a); it is not shown (single letters confused readers).
  * ------------------------------------------------------------------------------------------ */
 export function SectorHeading({
   sector,
@@ -20,12 +20,7 @@ export function SectorHeading({
 }) {
   return (
     <div id={`szektor-${sector.toLowerCase()}`} className="mb-3 flex scroll-mt-28 items-end gap-3">
-      <span
-        aria-hidden
-        className="grid h-11 w-11 shrink-0 place-items-center border-[3px] border-black bg-black font-display text-3xl font-extrabold text-accent shadow-[4px_4px_0_var(--color-accent)]"
-      >
-        {sector}
-      </span>
+      <span aria-hidden className="mb-1 h-5 w-5 shrink-0 border-[3px] border-black bg-accent" />
       <div className="min-w-0">
         <h2 className="font-display text-3xl font-extrabold leading-none tracking-tight">{title}</h2>
         {sub && <p className="mt-1 text-xs font-medium text-muted-foreground">{sub}</p>}
@@ -132,10 +127,10 @@ export function ClubLink({ id, name, className }: { id: string | null; name: str
 }
 
 /* --------------------------------------------------------------------------------------------
- * Grandstand: the top market values seated in a stand. Rows rise toward the back like tiers:
- * the most valuable sit in the top tier under the truss roof, the front rows run to the pitch.
+ * Top players: a plain ranking by estimated market value. The three highest get large cards, the
+ * rest a numbered list. Positions are written out in full; no metaphors that need explaining.
  * ------------------------------------------------------------------------------------------ */
-type Seat = {
+type Ranked = {
   player_id: string;
   full_name: string;
   birth_year: number | null;
@@ -146,64 +141,80 @@ type Seat = {
   prev_market_value_huf: number | null;
 };
 
-export function Grandstand({ players, seasonStart }: { players: Seat[]; seasonStart: number }) {
-  const tiers = [
-    { label: "Felső karéj", from: 0, to: 3, inset: "lg:mx-[16%]", big: true },
-    { label: "Középső karéj", from: 3, to: 8, inset: "lg:mx-[7%]", big: false },
-    { label: "Alsó karéj", from: 8, to: 15, inset: "", big: false },
-  ];
+function playerLine(p: Ranked, seasonStart: number) {
+  return [
+    p.club_name ? clubCase(p.club_name) : null,
+    p.primary_position ? POSITION_LABEL[p.primary_position] : null,
+    p.birth_year ? `${seasonStart - p.birth_year} éves` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+export function TopPlayers({ players, seasonStart, season }: { players: Ranked[]; seasonStart: number; season: string }) {
+  const podium = players.slice(0, 3);
+  const rest = players.slice(3, 15);
   return (
-    <section aria-label="A legértékesebb játékosok" className="relative border-[3px] border-black bg-white shadow-[8px_8px_0_#000]">
-      {/* cantilevered roof with two floodlight heads */}
-      <div className="truss relative h-8 border-t-0">
-        <div className="lamps floodlight-on absolute -bottom-4 left-3 h-7 w-16" />
-        <div className="lamps floodlight-on absolute -bottom-4 right-3 h-7 w-16" />
+    <section aria-labelledby="top-players" className="border-[3px] border-black bg-white shadow-[8px_8px_0_#000]">
+      <div className="truss relative h-6 border-t-0" aria-hidden>
+        <div className="lamps floodlight-on absolute -bottom-3 left-3 h-6 w-14" />
+        <div className="lamps floodlight-on absolute -bottom-3 right-3 h-6 w-14" />
       </div>
-      <div className="space-y-0 px-2 pb-0 pt-6 sm:px-4">
-        {tiers.map((t, ti) => (
-          <div key={t.label} className={cn("seats border-x-[3px] border-b-[6px] border-t-[3px] border-black px-2 pb-2.5 pt-2", ti > 0 && "-mt-[3px]", t.inset)}>
-            <div className="mb-1.5 flex items-center gap-2 text-xs font-bold text-black">
-              <span className="h-[3px] w-5 bg-black" />
-              {t.label}
-            </div>
-            <ol
-              start={t.from + 1}
-              className={cn(
-                "grid gap-1.5",
-                t.big ? "grid-cols-1 sm:grid-cols-3" : ti === 1 ? "grid-cols-2 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-4 lg:grid-cols-7",
-              )}
-            >
-              {players.slice(t.from, t.to).map((p, i) => (
+      <div className="px-3 pb-4 pt-6 sm:px-5">
+        <h2 id="top-players" className="font-display text-3xl font-extrabold leading-none sm:text-4xl">
+          A 15 legértékesebb játékos
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Becsült piaci érték szerint, a {season} szezon jegyzőkönyvei alapján.{" "}
+          <Link href="/modszertan" className="nb-mark font-semibold underline decoration-2 underline-offset-4">
+            Hogyan számoljuk?
+          </Link>
+        </p>
+        <ol aria-label="A legértékesebb játékosok" className="mt-4 space-y-4">
+          <li className="list-none">
+            <ol className="grid gap-3 sm:grid-cols-3">
+              {podium.map((p, i) => (
                 <li key={p.player_id}>
                   <Link
                     href={`/players/${p.player_id}`}
-                    className="nb-press group flex h-full flex-col justify-between border-[3px] border-black bg-white p-2"
+                    className={cn(
+                      "nb-press flex h-full flex-col gap-1 border-[3px] border-black p-3",
+                      i === 0 ? "bg-accent" : "bg-white",
+                    )}
                   >
-                    <div className="flex items-start justify-between gap-1">
-                      <span className="font-display text-sm font-bold text-muted-foreground">{t.from + i + 1}.</span>
-                      {p.primary_position && (
-                        <span className="font-display text-xs text-muted-foreground" title={POSITION_LABEL[p.primary_position]}>
-                          {POSITION_SHORT[p.primary_position]}
-                        </span>
-                      )}
-                    </div>
-                    <div className={cn("mt-1 font-semibold leading-tight", t.big ? "text-lg" : "text-sm")}>
-                      {titleCase(p.full_name)}
-                    </div>
-                    <div className="truncate text-[11px] text-muted-foreground">
-                      {p.club_name ? clubCase(p.club_name) : "–"}
-                      {p.birth_year ? `, ${seasonStart - p.birth_year} év` : ""}
-                    </div>
-                    <ValueTag value={p.market_value_huf} prev={p.prev_market_value_huf} size={t.big ? "md" : "sm"} className="mt-1.5" />
+                    <span className="font-display text-4xl font-extrabold leading-none">{i + 1}.</span>
+                    <span className="text-xl font-bold leading-tight">{titleCase(p.full_name)}</span>
+                    <span className="text-sm">{playerLine(p, seasonStart)}</span>
+                    <ValueTag value={p.market_value_huf} prev={p.prev_market_value_huf} size="md" className="mt-1" />
                   </Link>
                 </li>
               ))}
             </ol>
-          </div>
-        ))}
+          </li>
+          {rest.length > 0 && (
+            <li className="list-none">
+              <ol start={4} className="divide-y-2 divide-black border-[3px] border-black">
+                {rest.map((p, i) => (
+                  <li key={p.player_id}>
+                    <Link
+                      href={`/players/${p.player_id}`}
+                      className="grid grid-cols-[2.5rem_1fr_auto] items-center gap-x-3 px-3 py-2 hover:bg-[#fff6cc]"
+                    >
+                      <span className="font-display text-2xl font-extrabold">{i + 4}.</span>
+                      <span className="min-w-0">
+                        <span className="block truncate font-semibold">{titleCase(p.full_name)}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{playerLine(p, seasonStart)}</span>
+                      </span>
+                      <ValueTag value={p.market_value_huf} prev={p.prev_market_value_huf} size="sm" />
+                    </Link>
+                  </li>
+                ))}
+              </ol>
+            </li>
+          )}
+        </ol>
       </div>
-      {/* touchline */}
-      <div className="pitch h-5 border-t-[3px] border-black" />
+      <div className="pitch h-4 border-t-[3px] border-black" aria-hidden />
     </section>
   );
 }
